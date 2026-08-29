@@ -1,0 +1,46 @@
+{
+  "name": "nyaya-backend",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "worker": "node src/workers/main.js",
+    "dev": "node --watch src/server.js",
+    "ingest": "node scripts/ingest.js",
+    "extract-forms": "node scripts/extract-forms.js",
+    "test": "vitest run",
+    "test:cov": "vitest run --coverage",
+    "lint": "eslint .",
+    "format:check": "prettier --check ."
+  },
+  "dependencies": {
+    "@qdrant/js-client-rest": "1.13.0",
+    "archiver": "7.0.1",
+    "bullmq": "5.34.10",
+    "express": "4.21.2",
+    "express-rate-limit": "7.5.0",
+    "ioredis": "5.4.2",
+    "multer": "1.4.5-lts.1",
+    "nanoid": "5.0.9",
+    "pdf-lib": "1.17.1",
+    "pdfjs-dist": "4.9.155",
+    "pino": "9.6.0",
+    "pino-http": "10.4.0",
+    "prom-client": "15.1.3",
+    "swagger-ui-express": "5.0.1",
+    "tesseract.js": "5.1.1",
+    "yaml": "2.7.0",
+    "zod": "3.24.1"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "2.1.8",
+    "eslint": "9.17.0",
+    "prettier": "3.4.2",
+    "supertest": "7.0.0",
+    "vitest": "2.1.8"
+  }
+}

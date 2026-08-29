@@ -1,0 +1,15 @@
+node_modules/
+dist/
+coverage/
+.env
+.env.local
+*.log
+
+data/raw/
+data/forms/
+eval/results/*.json
+!eval/results/.gitkeep
+
+.DS_Store
+.vscode/
+.idea/
