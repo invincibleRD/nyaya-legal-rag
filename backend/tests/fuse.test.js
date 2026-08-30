@@ -23,7 +23,10 @@ describe('rrf', () => {
   })
 
   it('scores strictly by rank, not by any incoming score field', () => {
-    const dense = [{ id: 'x', score: 0.99 }, { id: 'y', score: 0.1 }]
+    const dense = [
+      { id: 'x', score: 0.99 },
+      { id: 'y', score: 0.1 },
+    ]
     const fused = rrf([dense], { k: 60 })
     expect(fused[0].score).toBeCloseTo(1 / 61, 6)
     expect(fused[1].score).toBeCloseTo(1 / 62, 6)
