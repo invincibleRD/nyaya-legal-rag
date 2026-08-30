@@ -334,12 +334,21 @@ describe('validateCitations', () => {
 
   it('leaves an answer without markers alone', () => {
     const res = validateCitations({ answer: 'I could not find this in the BNSS.', contexts })
-    expect(res).toEqual({
-      text: 'I could not find this in the BNSS.',
-      citations: [],
-      stripped: [],
-      valid: true,
+    expect(res.text).toBe('I could not find this in the BNSS.')
+    expect(res.citations).toEqual([])
+    expect(res.stripped).toEqual([])
+    expect(res.valid).toBe(true)
+  })
+
+  it('keeps a real marker and drops an invented one in the same answer', () => {
+    const res = validateCitations({
+      answer: 'See [BNSS s.103] but not [BNSS s.999].',
+      contexts,
     })
+    expect(res.text).toContain('[BNSS s.103]')
+    expect(res.text).not.toContain('999')
+    expect(res.valid).toBe(false)
+    expect(res.citations).toHaveLength(1)
   })
 
   it('tolerates spacing inside the marker', () => {
@@ -379,19 +388,107 @@ describe('shouldRefuse', () => {
     )
   })
 
-  it('answers when a single result clears the threshold', () => {
-    expect(shouldRefuse({ results: [{ score: 0.001 }, { score: 0.5 }], threshold: 0.02 })).toBe(
-      false
-    )
-  })
-
-  it('reads fused_score when the result carries one', () => {
-    expect(shouldRefuse({ results: [{ fused_score: 0.4 }], threshold: 0.02 })).toBe(false)
-    expect(shouldRefuse({ results: [{ fused_score: 0.001 }], threshold: 0.02 })).toBe(true)
+  it('answers when any result clears the threshold', () => {
+    expect(
+      shouldRefuse({ results: [{ dense_score: 0.3 }, { dense_score: 0.7 }], threshold: 0.58 })
+    ).toBe(false)
   })
 
   it('falls back to the configured threshold', () => {
-    expect(shouldRefuse({ results: [{ score: 0 }] })).toBe(true)
-    expect(shouldRefuse({ results: [{ score: 1 }] })).toBe(false)
+    expect(shouldRefuse({ results: [{ dense_score: 0 }] })).toBe(true)
+    expect(shouldRefuse({ results: [{ dense_score: 1 }] })).toBe(false)
+  })
+})
+
+// each of these was a real bypass: the old marker regex only understood one
+// exact syntax and passed anything else through as valid
+describe('citation markers the model actually writes', () => {
+  const contexts = [
+    {
+      section_number: '103',
+      subsection: '(1)',
+      act_short: 'BNSS',
+      section_title: 'Closed place',
+      text: 'sub (1) text',
+      page_start: 30,
+      page_end: 30,
+    },
+    {
+      section_number: '103',
+      subsection: '(2)',
+      act_short: 'BNSS',
+      section_title: 'Closed place',
+      text: 'sub (2) text',
+      page_start: 31,
+      page_end: 31,
+    },
+  ]
+
+  const bypasses = [
+    '[BNSS s.103 and s.999]',
+    '[BNSS ss.103 and 999]',
+    '[BNSS s.103, s.999]',
+    '[BNSS s.999(1) proviso]',
+    '[BNSS Sec. 999]',
+    '[BNSS section 999]',
+    '[BNSS §999]',
+    '[s.999 BNSS]',
+    '[BNSS 2023, s.999]',
+    '[BNSS 999]',
+    '[BNSS s.999-A]',
+  ]
+
+  for (const marker of bypasses) {
+    it(`does not let ${marker} through`, () => {
+      const r = validateCitations({ answer: `Text ${marker} more.`, contexts })
+      expect(r.valid).toBe(false)
+      expect(r.stripped.length).toBeGreaterThan(0)
+    })
+  }
+
+  it('rejects a different act, BNS is not BNSS', () => {
+    const r = validateCitations({ answer: 'See [BNS s.999].', contexts })
+    expect(r.valid).toBe(false)
+  })
+
+  it('binds a subsection marker to the chunk that holds it', () => {
+    const r = validateCitations({ answer: 'See [BNSS s.103(2)].', contexts })
+    expect(r.valid).toBe(true)
+    expect(r.citations[0].page_start).toBe(31)
+    expect(r.citations[0].text).toBe('sub (2) text')
+  })
+
+  it('catches a section invented in plain prose, not just in brackets', () => {
+    const r = validateCitations({
+      answer: 'Under Section 999 of the BNSS the penalty doubles.',
+      contexts,
+    })
+    expect(r.valid).toBe(false)
+    expect(r.invented_in_prose).toContain('999')
+  })
+
+  it('leaves a real section named in prose alone', () => {
+    const r = validateCitations({ answer: 'Under Section 103 the search is lawful.', contexts })
+    expect(r.valid).toBe(true)
+  })
+})
+
+describe('shouldRefuse scale', () => {
+  it('refuses when the cosine is below the threshold', () => {
+    expect(shouldRefuse({ results: [{ dense_score: 0.36 }], threshold: 0.58 })).toBe(true)
+  })
+
+  it('answers when the cosine clears it', () => {
+    expect(shouldRefuse({ results: [{ dense_score: 0.72 }], threshold: 0.58 })).toBe(false)
+  })
+
+  it('does not let a bm25 score stand in for a cosine', () => {
+    // sparse scores are unbounded, treating one as similarity answered everything
+    expect(shouldRefuse({ results: [{ score: 7.4 }], threshold: 0.58 })).toBe(true)
+  })
+
+  it('survives a null entry and a NaN score', () => {
+    expect(shouldRefuse({ results: [null], threshold: 0.58 })).toBe(true)
+    expect(shouldRefuse({ results: [{ dense_score: NaN }], threshold: 0.58 })).toBe(true)
   })
 })

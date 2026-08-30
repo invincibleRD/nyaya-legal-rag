@@ -1,34 +1,93 @@
 import { config } from '../../core/config.js'
 
-const MARKER = /\[\s*BNSS\s*s\.?\s*(\d+[A-Z]?)((?:\s*\([^)\]]{1,12}\))*)\s*\]/gi
+// anything bracket shaped that looks like a citation. deliberately loose: if we
+// cannot parse it we still have to judge it, otherwise "[BNSS s.103 and s.999]"
+// walks straight through.
+const CANDIDATE = /\[[^\]\n]{0,80}\]/g
+const LOOKS_LEGAL = /\d/
+const ACT_HINT = /\b(?:BNSS|BNS|CrPC|IPC|s\.|ss\.|sec|section|§)/i
+
+// one act, one section, optional subsections
+const STRICT =
+  /^\[\s*([A-Za-z]{2,5})\s*(?:s|ss|sec|section|§)?\.?\s*(\d+[A-Z]?)((?:\s*\([^)\]]{1,8}\))*)\s*\]$/i
+
+// bare prose, "under section 999 of the BNSS"
+const PROSE = /\b(?:section|sec\.|s\.)\s*(\d{1,3}[A-Z]?)\b/gi
 
 export function validateCitations({ answer, contexts = [] }) {
-  const bySection = new Map()
-  for (const ctx of contexts) {
-    const section = ctx?.section_number != null ? String(ctx.section_number) : ''
-    if (section && !bySection.has(section)) bySection.set(section, ctx)
-  }
-
+  const known = indexContexts(contexts)
   const stripped = []
   const kept = []
 
-  const text = String(answer || '').replace(MARKER, (marker, section, subsection) => {
-    if (!bySection.has(section)) {
-      if (!stripped.includes(marker)) stripped.push(marker)
-      return ''
+  let text = String(answer || '').replace(CANDIDATE, (marker) => {
+    if (!LOOKS_LEGAL.test(marker) || !ACT_HINT.test(marker)) return marker
+
+    const parsed = STRICT.exec(marker)
+    if (!parsed) {
+      // bracket-shaped and legal-looking but not a marker we can check
+      return drop(marker, stripped)
     }
-    const clean = `[BNSS s.${section}${subsection.replace(/\s+/g, '')}]`
+
+    const [, act, section, subs] = parsed
+    const ctx = known.lookup(act, section, subs)
+    if (!ctx) return drop(marker, stripped)
+
+    const clean = `[${ctx.act_short || act.toUpperCase()} s.${section}${subs.replace(/\s+/g, '')}]`
     if (!kept.some((k) => k.marker === clean)) {
-      kept.push({ marker: clean, context: bySection.get(section), subsection: subsection.trim() })
+      kept.push({ marker: clean, context: ctx, subsection: subs.trim() })
     }
     return clean
   })
+
+  // a section named in plain prose is a citation too, and the easiest to believe
+  const invented = new Set()
+  for (const m of text.matchAll(PROSE)) {
+    if (!known.hasSection(m[1])) invented.add(m[1])
+  }
 
   return {
     text: tidy(text),
     citations: buildCitations(kept),
     stripped,
-    valid: stripped.length === 0,
+    invented_in_prose: [...invented],
+    valid: stripped.length === 0 && invented.size === 0,
+  }
+}
+
+function drop(marker, stripped) {
+  const key = marker.replace(/\s+/g, ' ')
+  if (!stripped.includes(key)) stripped.push(key)
+  return ''
+}
+
+function indexContexts(contexts) {
+  const rows = contexts.filter(Boolean).map((c) => ({
+    ...c,
+    _section: c.section_number != null ? String(c.section_number) : '',
+    _act: (c.act_short || '').toUpperCase(),
+  }))
+
+  return {
+    hasSection: (section) => rows.some((r) => r._section === String(section)),
+    lookup(act, section, subs) {
+      const wanted = String(section)
+      const matches = rows.filter((r) => r._section === wanted)
+      if (!matches.length) return null
+      // the act has to be one we actually retrieved, BNS and BNSS are different acts
+      const sameAct = matches.filter((r) => !r._act || r._act === act.toUpperCase())
+      if (!sameAct.length) return null
+
+      // bind to the chunk that really holds this subsection, otherwise the
+      // source panel shows a passage the citation is not in
+      const label = (subs || '').replace(/\s+/g, '')
+      if (label) {
+        const exact = sameAct.find((r) => (r.subsection || '').replace(/\s+/g, '') === label)
+        if (exact) return exact
+        const inText = sameAct.find((r) => (r.text || '').includes(label))
+        if (inText) return inText
+      }
+      return sameAct[0]
+    },
   }
 }
 
@@ -52,8 +111,14 @@ export function buildCitations(referenced) {
 
 export function shouldRefuse({ results, threshold = config.retrieval.confidenceThreshold }) {
   if (!Array.isArray(results) || results.length === 0) return true
-  const best = Math.max(...results.map((r) => r.fused_score ?? r.score ?? 0))
-  return best < threshold
+  // cosine only. rrf ranks rather than measures, and a bm25 score is on a
+  // different scale entirely, so neither can be compared against a threshold.
+  // a hit the dense leg never returned counts as no similarity at all.
+  const scores = results
+    .filter(Boolean)
+    .map((r) => (Number.isFinite(r.dense_score) ? r.dense_score : 0))
+  if (!scores.length) return true
+  return Math.max(...scores) < threshold
 }
 
 function tidy(text) {

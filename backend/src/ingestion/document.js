@@ -12,9 +12,10 @@ const MAX_PAGES = 300
 const TARGET = 1500
 const OVERLAP = 150
 
+// the lower median, a few wide gaps must not pass for normal line spacing
 function median(values) {
   const sorted = [...values].sort((a, b) => a - b)
-  return sorted[Math.floor(sorted.length / 2)]
+  return sorted[Math.floor((sorted.length - 1) / 2)]
 }
 
 // an uploaded pdf has no paragraph marks, so a bigger than usual line gap is
@@ -58,6 +59,12 @@ function cut(text, target) {
   return out
 }
 
+// carry the end of a chunk into the next one, cutting at a word
+function tail(text, overlap) {
+  if (overlap <= 0) return ''
+  return text.slice(-overlap).replace(/^\S*\s/, '')
+}
+
 function paragraphs(pages, target) {
   const out = []
   for (const page of pages || []) {
@@ -87,7 +94,7 @@ export function chunkPages(pages, { target = TARGET, overlap = OVERLAP } = {}) {
     if (text && text.length + para.text.length + 2 > target) {
       flush()
       // the carried tail came off the previous page, keep that page on the chunk
-      text = text.slice(-overlap).replace(/^\S*\s/, '')
+      text = tail(text, overlap)
       pageStart = text ? pageEnd : para.page
     }
     text = text ? `${text}\n\n${para.text}` : para.text

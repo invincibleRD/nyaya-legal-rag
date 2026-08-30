@@ -34,16 +34,27 @@ document, not just the user message.
 
 ```js
 export function validateCitations({ answer, contexts })
-// -> { text, citations, stripped, valid }
+// -> { text, citations, stripped, invented_in_prose, valid }
 ```
 
-Pure and synchronous. Every `[BNSS s.N]` marker in the answer must correspond to
-a section actually present in `contexts`. Invented ones get stripped. This is a
-code guard, not a prompt instruction.
+Pure and synchronous. Detection is two stage: anything bracket shaped that looks
+like a citation is a candidate, then each candidate is parsed strictly. A
+candidate that does not parse to exactly one section present in `contexts` is
+stripped, so a marker the model improvised (`[BNSS s.103 and s.999]`) cannot pass
+by not matching the regex. The act is checked too, BNS is not BNSS. Sections named
+in plain prose are checked as well and land in `invented_in_prose`. A subsection
+marker binds to the chunk that actually holds that subsection.
+
+This is a code guard, not a prompt instruction.
 
 ```js
 export function shouldRefuse({ results, threshold })  // -> boolean
 ```
+
+Keys off `dense_score`, the cosine from the dense leg. RRF ranks rather than
+measures, and BM25 is unbounded, so neither can be compared against a threshold.
+Default 0.58, measured on this corpus: in scope questions land 0.62-0.80, out of
+scope 0.37-0.53.
 
 ## src/retrieval/query.js
 
