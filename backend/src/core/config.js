@@ -32,7 +32,7 @@ export const config = {
 
   llm: {
     provider: process.env.LLM_PROVIDER || 'gemini',
-    model: process.env.LLM_MODEL || 'gemini-2.0-flash',
+    model: process.env.LLM_MODEL || 'gemini-3.6-flash',
     geminiKey: process.env.GEMINI_API_KEY || '',
     openrouterKey: process.env.OPENROUTER_API_KEY || '',
     groqKey: process.env.GROQ_API_KEY || '',
@@ -43,7 +43,7 @@ export const config = {
     topK: num(process.env.RETRIEVAL_TOP_K, 8),
     candidatePool: num(process.env.CANDIDATE_POOL, 40),
     rrfK: num(process.env.RRF_K, 60),
-    confidenceThreshold: num(process.env.CONFIDENCE_THRESHOLD, 0.02),
+    confidenceThreshold: num(process.env.CONFIDENCE_THRESHOLD, 0.58),
   },
 
   limits: {

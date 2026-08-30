@@ -12,3 +12,6 @@ eval/results/*.json
 .DS_Store
 .vscode/
 .idea/
+
+# local only, my own view of the build
+STATUS.md

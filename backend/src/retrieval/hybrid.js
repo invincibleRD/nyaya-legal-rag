@@ -70,8 +70,18 @@ async function hybridSearch(collection, { dense, sparseText, filter, limit, mode
     legs.push(search(collection, { sparse: encodeQuery(sparseText, stats), filter, limit }))
   }
 
-  const results = await Promise.all(legs)
-  return rrf(results, { key: (p) => p.id })
+  const [denseHits = [], sparseHits = []] = await Promise.all(legs)
+
+  // rrf is a rank score, useful for ordering and useless as a confidence. keep
+  // the cosine alongside it so the refusal path has a real similarity to judge.
+  const cosine = new Map(denseHits.map((p) => [p.id, p.score]))
+  return rrf(
+    [denseHits, sparseHits].filter((l) => l.length),
+    { key: (p) => p.id }
+  ).map((row) => ({
+    ...row,
+    dense_score: cosine.get(row.id) ?? null,
+  }))
 }
 
 // "what is section 103" must return section 103, not whatever the cosine felt
@@ -168,8 +178,10 @@ export async function retrieve({
   const results = diversify(ranked, topK).map((r) => ({
     ...toCitation(r.item, r.source),
     fused_score: r.score,
+    dense_score: r.dense_score ?? null,
     exact_match: Boolean(r.exact),
   }))
 
-  return { results, route, intent, took_ms: Date.now() - started }
+  const topScore = Math.max(0, ...results.map((r) => r.dense_score ?? 0))
+  return { results, route, intent, top_score: topScore, took_ms: Date.now() - started }
 }
