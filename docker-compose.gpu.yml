@@ -1,0 +1,12 @@
+# overlay for an nvidia box: docker compose -f docker-compose.yml -f docker-compose.gpu.yml up
+# image tag matches compute capability, 86 is ampere (rtx 30xx)
+services:
+  embeddings:
+    image: ghcr.io/huggingface/text-embeddings-inference:86-1.7
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
