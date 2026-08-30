@@ -5,8 +5,7 @@ coverage/
 .env.local
 *.log
 
-data/raw/
-data/forms/
+data/
 eval/results/*.json
 !eval/results/.gitkeep
 
