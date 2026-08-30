@@ -26,7 +26,7 @@ export function toCitation(point, source) {
   const p = point.payload
   if (source === 'document') {
     return {
-      marker: `[${p.document_name} p.${p.page_start}]`,
+      marker: `[doc: ${p.document_name} p.${p.page_start}]`,
       source: 'document',
       act_short: null,
       section_number: null,
