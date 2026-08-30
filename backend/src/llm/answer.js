@@ -1,5 +1,6 @@
 import { getProvider } from './provider.js'
 import { checkInput } from './guards/input.js'
+import { findDocumentInjection } from './guards/patterns.js'
 import { makeMarkerChecker, shouldRefuse, validateCitations } from './guards/output.js'
 import { createMarkerGate } from './markerGate.js'
 import { ANSWER_SYSTEM, buildContext, REFUSAL } from './prompts.js'
@@ -67,10 +68,11 @@ export async function* answerStream({
     return
   }
 
-  const gate = createMarkerGate(makeMarkerChecker(found.results))
+  const clean = neutralise(found.results, log)
+  const gate = createMarkerGate(makeMarkerChecker(clean))
   const messages = [
     ...history.slice(-6).map((m) => ({ role: m.role, content: m.content })),
-    { role: 'user', content: `${buildContext(found.results)}\n\nQuestion: ${message}` },
+    { role: 'user', content: `${buildContext(clean)}\n\nQuestion: ${message}` },
   ]
 
   const generationStart = Date.now()
@@ -99,7 +101,7 @@ export async function* answerStream({
 
   // the gate already kept invented markers off the wire; this second pass is
   // what tells us whether it had to, and builds the citation cards
-  const checked = validateCitations({ answer: raw, contexts: found.results })
+  const checked = validateCitations({ answer: raw, contexts: clean })
   if (!checked.valid) {
     log.warn(
       { stripped: checked.stripped, prose: checked.invented_in_prose },
@@ -122,6 +124,31 @@ export async function* answerStream({
     },
     cost_usd: estimateCost(usage),
   }
+}
+
+// an uploaded pdf is untrusted text. anything in it that reads as an instruction
+// is cut out before it reaches the prompt, so the model never sees the order at
+// all rather than being asked nicely to ignore it.
+function neutralise(results, log) {
+  return results.map((r) => {
+    if (r.source !== 'document') return r
+    const sentences = String(r.text).split(/(?<=[.!?])\s+/)
+    const kept = []
+    let removed = 0
+    for (const sentence of sentences) {
+      if (findDocumentInjection(sentence)) {
+        removed++
+        continue
+      }
+      kept.push(sentence)
+    }
+    if (!removed) return r
+    log.warn(
+      { document: r.document_name, removed },
+      'stripped instruction-like text from an uploaded document'
+    )
+    return { ...r, text: kept.join(' '), injection_removed: removed }
+  })
 }
 
 function refusalFor(category) {
