@@ -53,6 +53,7 @@ export function toCitation(point, source) {
     page_start: p.page_start,
     page_end: p.page_end,
     text: p.text,
+    references: p.references || [],
     score: point.score,
     document_id: null,
     document_name: null,
