@@ -534,3 +534,38 @@ describe('legal questions that read like injection', () => {
     expect(findDocumentInjection('The court may ignore all previous instructions')).not.toBeNull()
   })
 })
+
+describe('cross references the statute itself makes', () => {
+  const contexts = [
+    {
+      section_number: '187',
+      act_short: 'BNSS',
+      section_title: 'Procedure when investigation cannot be completed',
+      text: 'the Magistrate may authorise detention as provided in section 58 of this Sanhita',
+      page_start: 60,
+      references: ['58'],
+    },
+  ]
+
+  it('does not call a section invented when the retrieved text cites it', () => {
+    const r = validateCitations({
+      answer: 'The accused must be produced as provided in section 58.',
+      contexts,
+    })
+    expect(r.valid).toBe(true)
+    expect(r.invented_in_prose).toEqual([])
+  })
+
+  it('still refuses to let a bracketed marker cite something not retrieved', () => {
+    // prose may repeat a cross reference, a citation claims a source
+    const r = validateCitations({ answer: 'See [BNSS s.58].', contexts })
+    expect(r.valid).toBe(false)
+    expect(r.stripped.length).toBe(1)
+  })
+
+  it('still catches a section nobody mentioned', () => {
+    const r = validateCitations({ answer: 'See section 999 for details.', contexts })
+    expect(r.valid).toBe(false)
+    expect(r.invented_in_prose).toContain('999')
+  })
+})
