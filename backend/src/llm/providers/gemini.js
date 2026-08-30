@@ -3,7 +3,9 @@ import { post, requireKey, sseData, parseFrame, emptyAnswer } from './http.js'
 
 const BASE = 'https://generativelanguage.googleapis.com/v1beta/models'
 
-export const fastModel = 'gemini-2.0-flash-lite'
+export const fastModel = 'gemini-3.5-flash-lite'
+
+const MIN_OUTPUT_TOKENS = 512
 
 function body({ system, messages, temperature, maxTokens }) {
   return {
@@ -14,7 +16,10 @@ function body({ system, messages, temperature, maxTokens }) {
     ...(system ? { systemInstruction: { parts: [{ text: system }] } } : {}),
     generationConfig: {
       temperature: temperature ?? 0.2,
-      maxOutputTokens: maxTokens ?? 1024,
+      // gemini 3 reasons before it answers and the reasoning comes out of this
+      // budget, so a small cap returns a finishReason of MAX_TOKENS and no text
+      maxOutputTokens: Math.max(maxTokens ?? 1024, MIN_OUTPUT_TOKENS),
+      thinkingConfig: { thinkingLevel: 'low' },
     },
   }
 }
