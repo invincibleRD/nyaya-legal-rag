@@ -32,7 +32,7 @@ export const config = {
 
   llm: {
     provider: process.env.LLM_PROVIDER || 'gemini',
-    model: process.env.LLM_MODEL || 'gemini-2.0-flash',
+    model: process.env.LLM_MODEL || 'gemini-3.6-flash',
     geminiKey: process.env.GEMINI_API_KEY || '',
     openrouterKey: process.env.OPENROUTER_API_KEY || '',
     groqKey: process.env.GROQ_API_KEY || '',
