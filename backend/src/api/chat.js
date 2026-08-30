@@ -8,6 +8,7 @@ import {
   createConversation,
   getConversation,
   getMessages,
+  listDocuments,
   renameConversation,
 } from '../core/store.js'
 
@@ -48,6 +49,12 @@ chat.post('/chat', limiter, async (req, res) => {
     conversation = await createConversation(req.sessionId, title(message))
   }
 
+  // anything the session has finished ingesting is searchable without the client
+  // having to name it, but it never reaches another session's retrieval
+  const documents = documentIds.length
+    ? documentIds
+    : (await listDocuments(req.sessionId)).filter((d) => d.status === 'ready').map((d) => d.id)
+
   const history = await getMessages(conversation.id)
   await addMessage(conversation.id, { role: 'user', content: message })
 
@@ -70,7 +77,7 @@ chat.post('/chat', limiter, async (req, res) => {
       message,
       history: history.map((m) => ({ role: m.role, content: m.content })),
       sessionId: req.sessionId,
-      documentIds,
+      documentIds: documents,
       conversationId: conversation.id,
       signal: abort.signal,
       log: req.log,
