@@ -56,7 +56,6 @@ async function shutdown(signal) {
   logger.info({ signal }, 'draining ingest worker')
   await worker.close()
   await closeRedis()
-  process.exit(0)
 }
 
 process.on('SIGTERM', () => shutdown('SIGTERM'))

@@ -43,7 +43,7 @@ export const config = {
     topK: num(process.env.RETRIEVAL_TOP_K, 8),
     candidatePool: num(process.env.CANDIDATE_POOL, 40),
     rrfK: num(process.env.RRF_K, 60),
-    confidenceThreshold: num(process.env.CONFIDENCE_THRESHOLD, 0.02),
+    confidenceThreshold: num(process.env.CONFIDENCE_THRESHOLD, 0.58),
   },
 
   limits: {
