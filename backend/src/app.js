@@ -8,6 +8,7 @@ import { health } from './api/health.js'
 import { session } from './api/session.js'
 import { forms } from './api/forms.js'
 import { search } from './api/search.js'
+import { chat } from './api/chat.js'
 
 export function createApp() {
   const app = express()
@@ -38,6 +39,7 @@ export function createApp() {
   app.use('/api/v1', health)
   app.use('/api/v1', session, forms)
   app.use('/api/v1', session, search)
+  app.use('/api/v1', session, chat)
 
   app.get('/api/v1/metrics', async (_req, res) => {
     res.set('Content-Type', registry.contentType)
