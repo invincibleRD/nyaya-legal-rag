@@ -1,5 +1,5 @@
 import { config } from '../../core/config.js'
-import { post, sseData } from './http.js'
+import { post, sseData, parseFrame, emptyAnswer } from './http.js'
 
 function body({ system, messages, temperature, maxTokens, model }, stream) {
   return {
@@ -25,13 +25,20 @@ export async function* stream(target, req) {
     signal: req.signal,
   })
   let usage = null
+  let any = false
   for await (const data of sseData(res)) {
-    const chunk = JSON.parse(data)
+    const chunk = parseFrame(data)
+    if (!chunk) continue
+    // some gateways deliver a rate limit as a frame inside a 200 response
+    if (chunk.error) throw emptyAnswer(target.provider, chunk.error.message || 'error frame')
     const text = chunk.choices?.[0]?.delta?.content
-    if (text) yield { text }
+    if (text) {
+      any = true
+      yield { text }
+    }
     if (chunk.usage) usage = usageOf(chunk)
   }
-  // last delta carries usage and no text
+  if (!any) throw emptyAnswer(target.provider, 'stream carried no content')
   if (usage) yield { text: '', usage }
 }
 
@@ -43,5 +50,8 @@ export async function complete(target, req) {
     signal: req.signal,
   })
   const json = await res.json()
-  return { text: json.choices?.[0]?.message?.content || '', usage: usageOf(json) }
+  if (json.error) throw emptyAnswer(target.provider, json.error.message || 'error')
+  const text = json.choices?.[0]?.message?.content
+  if (!text) throw emptyAnswer(target.provider, 'empty response')
+  return { text, usage: usageOf(json) }
 }

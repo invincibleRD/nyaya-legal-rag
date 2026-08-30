@@ -1,5 +1,5 @@
 import { config } from '../../core/config.js'
-import { post, readLines } from './http.js'
+import { post, readLines, parseFrame, emptyAnswer } from './http.js'
 
 export const fastModel = 'llama3.2:3b'
 
@@ -27,18 +27,29 @@ function call(req, stream) {
 export async function* stream(req) {
   const res = await call(req, true)
   let usage = null
+  let any = false
   for await (const line of readLines(res)) {
-    const chunk = JSON.parse(line)
+    const chunk = parseFrame(line)
+    if (!chunk) continue
+    if (chunk.error) throw emptyAnswer('ollama', chunk.error)
     const text = chunk.message?.content
-    if (text) yield { text }
+    if (text) {
+      any = true
+      yield { text }
+    }
     if (chunk.done) usage = usageOf(chunk)
   }
-  // last delta carries usage and no text
+  if (!any) throw emptyAnswer('ollama', 'stream carried no content')
   if (usage) yield { text: '', usage }
 }
 
 export async function complete(req) {
   const res = await call(req, false)
   const json = await res.json()
-  return { text: json.message?.content || '', usage: usageOf(json) }
+  if (json.error) throw emptyAnswer('ollama', json.error)
+  const text = json.message?.content
+  if (!text) throw emptyAnswer('ollama', 'empty response')
+  return { text, usage: usageOf(json) }
 }
+
+export function checkKey() {}

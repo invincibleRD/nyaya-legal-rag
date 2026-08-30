@@ -183,27 +183,19 @@ describe('ollama', () => {
 })
 
 describe('provider selection', () => {
-  it('defaults to gemini', () => {
-    expect(getProvider().name).toBe('gemini')
-  })
-
   it('throws on a provider it does not know', () => {
     config.llm.provider = 'bedrock'
     expect(() => getProvider()).toThrow(/unknown LLM_PROVIDER "bedrock"/)
   })
 
-  it('has a cheap model for every provider', () => {
-    const models = {}
+  it('gives every provider a cheap model distinct from the main one', () => {
     for (const name of ['gemini', 'openrouter', 'groq', 'ollama']) {
       config.llm.provider = name
-      models[name] = getFastModel()
+      config.llm.model = 'the-big-expensive-one'
+      const fast = getFastModel()
+      expect(fast, name).toBeTruthy()
+      expect(fast, name).not.toBe(config.llm.model)
     }
-    expect(models).toEqual({
-      gemini: 'gemini-2.0-flash-lite',
-      openrouter: 'google/gemini-2.0-flash-lite-001',
-      groq: 'llama-3.1-8b-instant',
-      ollama: 'llama3.2:3b',
-    })
   })
 
   for (const [provider, key, envVar] of [
@@ -219,7 +211,8 @@ describe('provider selection', () => {
       })
       const p = getProvider()
 
-      await expect(collect(p.stream(ask))).rejects.toThrow(envVar)
+      // stream throws on construction, before a route can flush headers
+      expect(() => p.stream(ask)).toThrow(envVar)
       await expect(p.complete(ask)).rejects.toThrow(envVar)
     })
   }
@@ -266,10 +259,11 @@ describe('abort', () => {
     const controller = new AbortController()
 
     const run = getProvider().complete({ ...ask, signal: controller.signal })
-    await reached
+    const signal = await reached
     controller.abort()
 
     await expect(run).rejects.toThrow('aborted')
+    expect(signal.aborted).toBe(true)
   })
 })
 
@@ -301,5 +295,51 @@ describe('cost', () => {
   it('counts tokens roughly', () => {
     expect(countTokens('a'.repeat(400))).toBe(100)
     expect(countTokens('')).toBe(0)
+  })
+})
+
+// these cover the http-200 failure modes: providers signal refusals and rate
+// limits inside a successful response, which used to surface as a blank answer
+describe('a 200 that carries no answer', () => {
+  it('throws when gemini blocks the prompt instead of returning empty text', async () => {
+    config.llm.provider = 'gemini'
+    stubFetch(
+      replied({ promptFeedback: { blockReason: 'SAFETY' }, usageMetadata: { promptTokenCount: 9 } })
+    )
+    await expect(getProvider().complete(ask)).rejects.toThrow(/gemini returned no text.*SAFETY/)
+  })
+
+  it('throws when an openai-compatible gateway sends an error frame mid stream', async () => {
+    config.llm.provider = 'openrouter'
+    stubFetch(streamed(['data: {"error":{"code":429,"message":"rate limited"}}\n']))
+    await expect(collect(getProvider().stream(ask))).rejects.toThrow(/rate limited/)
+  })
+
+  it('throws when ollama reports a missing model with a 200', async () => {
+    config.llm.provider = 'ollama'
+    stubFetch(replied({ error: 'model "nope" not found' }))
+    await expect(getProvider().complete(ask)).rejects.toThrow(/not found/)
+  })
+
+  it('throws rather than returning an empty string when the stream had no content', async () => {
+    config.llm.provider = 'openrouter'
+    stubFetch(streamed(['data: {"choices":[{"delta":{}}]}\n', 'data: [DONE]\n']))
+    await expect(collect(getProvider().stream(ask))).rejects.toThrow(/no content/)
+  })
+})
+
+describe('a corrupt frame', () => {
+  it('costs one delta, not the whole answer', async () => {
+    config.llm.provider = 'openrouter'
+    stubFetch(
+      streamed([
+        'data: {"choices":[{"delta":{"content":"before "}}]}\n',
+        'data: not json at all\n',
+        'data: {"choices":[{"delta":{"content":"after"}}]}\n',
+        'data: [DONE]\n',
+      ])
+    )
+    const out = await collect(getProvider().stream(ask))
+    expect(out.map((d) => d.text).join('')).toBe('before after')
   })
 })

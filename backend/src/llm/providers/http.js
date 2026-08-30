@@ -42,3 +42,18 @@ export async function* sseData(res) {
     yield data
   }
 }
+
+// a single corrupt frame should cost one delta, not the whole answer
+export function parseFrame(data) {
+  try {
+    return JSON.parse(data)
+  } catch {
+    return null
+  }
+}
+
+// providers signal refusals and rate limits with http 200 and no text, which
+// would otherwise reach the user as a blank answer
+export function emptyAnswer(provider, reason) {
+  return new Error(`${provider} returned no text: ${reason}`)
+}

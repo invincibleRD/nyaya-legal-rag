@@ -1,5 +1,5 @@
 import { config } from '../../core/config.js'
-import { post, requireKey, sseData } from './http.js'
+import { post, requireKey, sseData, parseFrame, emptyAnswer } from './http.js'
 
 const BASE = 'https://generativelanguage.googleapis.com/v1beta/models'
 
@@ -36,6 +36,14 @@ function textOf(chunk) {
   return parts.map((p) => p.text || '').join('')
 }
 
+function blockReason(chunk) {
+  if (chunk.error) return chunk.error.message || 'error'
+  if (chunk.promptFeedback?.blockReason) return `blocked (${chunk.promptFeedback.blockReason})`
+  const finish = chunk.candidates?.[0]?.finishReason
+  if (finish && finish !== 'STOP' && finish !== 'MAX_TOKENS') return `finishReason ${finish}`
+  return null
+}
+
 function usageOf(chunk) {
   const u = chunk.usageMetadata || {}
   return { input_tokens: u.promptTokenCount || 0, output_tokens: u.candidatesTokenCount || 0 }
@@ -44,18 +52,32 @@ function usageOf(chunk) {
 export async function* stream(req) {
   const res = await call(req, 'streamGenerateContent?alt=sse')
   let usage = null
+  let any = false
   for await (const data of sseData(res)) {
-    const chunk = JSON.parse(data)
+    const chunk = parseFrame(data)
+    if (!chunk) continue
+    const blocked = blockReason(chunk)
+    if (blocked) throw emptyAnswer('gemini', blocked)
     const text = textOf(chunk)
-    if (text) yield { text }
+    if (text) {
+      any = true
+      yield { text }
+    }
     if (chunk.usageMetadata) usage = usageOf(chunk)
   }
-  // last delta carries usage and no text
+  if (!any) throw emptyAnswer('gemini', 'stream carried no content')
   if (usage) yield { text: '', usage }
 }
 
 export async function complete(req) {
   const res = await call(req, 'generateContent')
   const json = await res.json()
-  return { text: textOf(json), usage: usageOf(json) }
+  const text = textOf(json)
+  const blocked = blockReason(json)
+  if (!text) throw emptyAnswer('gemini', blocked || 'empty response')
+  return { text, usage: usageOf(json) }
+}
+
+export function checkKey() {
+  requireKey(config.llm.geminiKey, 'GEMINI_API_KEY', 'gemini')
 }
