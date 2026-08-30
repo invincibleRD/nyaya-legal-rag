@@ -20,3 +20,7 @@ export async function* stream(req) {
 export async function complete(req) {
   return openai.complete(target(), req)
 }
+
+export function checkKey() {
+  requireKey(config.llm.groqKey, 'GROQ_API_KEY', 'groq')
+}

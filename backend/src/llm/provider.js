@@ -19,7 +19,12 @@ export function getProvider() {
   }
   return {
     name,
-    stream: impl.stream,
+    // the key check has to run before the generator is constructed, otherwise it
+    // throws on first next(), which for a route is after the headers went out
+    stream: (req) => {
+      impl.checkKey()
+      return impl.stream(req)
+    },
     complete: impl.complete,
     fastModel: impl.fastModel,
     countTokens,
