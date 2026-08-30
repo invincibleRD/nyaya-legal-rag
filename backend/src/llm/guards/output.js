@@ -14,6 +14,26 @@ const STRICT =
 // bare prose, "under section 999 of the BNSS"
 const PROSE = /\b(?:section|sec\.|s\.)\s*(\d{1,3}[A-Z]?)\b/gi
 
+// one marker, one verdict. the streaming path needs this per marker as tokens
+// arrive, the batch path needs it over a finished answer.
+export function makeMarkerChecker(contexts = []) {
+  const known = indexContexts(contexts)
+  return function check(marker) {
+    if (!LOOKS_LEGAL.test(marker) || !ACT_HINT.test(marker)) {
+      return { verdict: 'not-a-citation', text: marker }
+    }
+    const parsed = STRICT.exec(marker)
+    if (!parsed) return { verdict: 'invented', text: '' }
+
+    const [, act, section, subs] = parsed
+    const ctx = known.lookup(act, section, subs)
+    if (!ctx) return { verdict: 'invented', text: '' }
+
+    const clean = `[${ctx.act_short || act.toUpperCase()} s.${section}${subs.replace(/\s+/g, '')}]`
+    return { verdict: 'ok', text: clean, context: ctx, subsection: subs.trim() }
+  }
+}
+
 export function validateCitations({ answer, contexts = [] }) {
   const known = indexContexts(contexts)
   const stripped = []
