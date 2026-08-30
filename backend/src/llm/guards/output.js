@@ -6,6 +6,10 @@ import { config } from '../../core/config.js'
 const CANDIDATE = /\[[^\]\n]{0,80}\]/g
 const LOOKS_LEGAL = /\d/
 const ACT_HINT = /\b(?:BNSS|BNS|CrPC|IPC|s\.|ss\.|sec|section|§)/i
+const DOC_HINT = /^\[\s*doc\s*:/i
+
+// [doc: notice.pdf p.2], the only shape an upload is cited in
+const DOC_MARKER = /^\[\s*doc\s*:\s*(.+?)\s*,?\s*p\.?\s*(\d{1,4})\s*\]$/i
 
 // one act, one section, optional subsections
 const STRICT =
@@ -19,6 +23,18 @@ const PROSE = /\b(?:section|sec\.|s\.)\s*(\d{1,3}[A-Z]?)\b/gi
 export function makeMarkerChecker(contexts = []) {
   const known = indexContexts(contexts)
   return function check(marker) {
+    if (DOC_HINT.test(marker)) {
+      const doc = DOC_MARKER.exec(marker)
+      if (!doc) return { verdict: 'invented', text: '' }
+      const ctx = known.lookupDocument(doc[1], doc[2])
+      if (!ctx) return { verdict: 'invented', text: '' }
+      return {
+        verdict: 'ok',
+        text: `[doc: ${ctx.document_name} p.${ctx.page_start}]`,
+        context: ctx,
+        subsection: '',
+      }
+    }
     if (!LOOKS_LEGAL.test(marker) || !ACT_HINT.test(marker)) {
       return { verdict: 'not-a-citation', text: marker }
     }
@@ -39,24 +55,15 @@ export function validateCitations({ answer, contexts = [] }) {
   const stripped = []
   const kept = []
 
+  const check = makeMarkerChecker(contexts)
   let text = String(answer || '').replace(CANDIDATE, (marker) => {
-    if (!LOOKS_LEGAL.test(marker) || !ACT_HINT.test(marker)) return marker
-
-    const parsed = STRICT.exec(marker)
-    if (!parsed) {
-      // bracket-shaped and legal-looking but not a marker we can check
-      return drop(marker, stripped)
+    const verdict = check(marker)
+    if (verdict.verdict === 'not-a-citation') return marker
+    if (verdict.verdict === 'invented') return drop(marker, stripped)
+    if (!kept.some((k) => k.marker === verdict.text)) {
+      kept.push({ marker: verdict.text, context: verdict.context, subsection: verdict.subsection })
     }
-
-    const [, act, section, subs] = parsed
-    const ctx = known.lookup(act, section, subs)
-    if (!ctx) return drop(marker, stripped)
-
-    const clean = `[${ctx.act_short || act.toUpperCase()} s.${section}${subs.replace(/\s+/g, '')}]`
-    if (!kept.some((k) => k.marker === clean)) {
-      kept.push({ marker: clean, context: ctx, subsection: subs.trim() })
-    }
-    return clean
+    return verdict.text
   })
 
   // a section named in plain prose is a citation too, and the easiest to believe
@@ -99,6 +106,15 @@ function indexContexts(contexts) {
   }
 
   return {
+    lookupDocument(name, page) {
+      const wanted = String(name).trim().toLowerCase()
+      const docs = rows.filter((r) => r.source === 'document' && r.document_name)
+      const byName = docs.filter((r) => r.document_name.toLowerCase() === wanted)
+      const pool = byName.length ? byName : docs
+      if (!pool.length) return null
+      const n = Number(page)
+      return pool.find((r) => n >= r.page_start && n <= (r.page_end ?? r.page_start)) || null
+    },
     hasSection: (section) =>
       rows.some((r) => r._section === String(section)) || mentioned.has(String(section)),
     lookup(act, section, subs) {
