@@ -1,24 +1,12 @@
+import globals from 'globals'
+
 export default [
   {
     files: ['**/*.js'],
     languageOptions: {
       ecmaVersion: 2023,
       sourceType: 'module',
-      globals: {
-        process: 'readonly',
-        console: 'readonly',
-        Buffer: 'readonly',
-        URL: 'readonly',
-        fetch: 'readonly',
-        setTimeout: 'readonly',
-        clearTimeout: 'readonly',
-        setInterval: 'readonly',
-        clearInterval: 'readonly',
-        AbortController: 'readonly',
-        TextDecoder: 'readonly',
-        TextEncoder: 'readonly',
-        __dirname: 'readonly',
-      },
+      globals: globals.node,
     },
     rules: {
       'no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
