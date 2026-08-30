@@ -87,8 +87,20 @@ function indexContexts(contexts) {
     _act: (c.act_short || '').toUpperCase(),
   }))
 
+  // sections the retrieved text itself points at. a bracketed marker still has to
+  // be a section we actually retrieved, but prose repeating a cross reference the
+  // statute makes ("as provided in section 58") is quoting the source, not inventing.
+  const mentioned = new Set()
+  for (const r of rows) {
+    for (const m of String(r.text || '').matchAll(/\bsections?\s+(\d{1,3}[A-Z]?)\b/gi)) {
+      mentioned.add(m[1])
+    }
+    for (const ref of r.references || []) mentioned.add(String(ref))
+  }
+
   return {
-    hasSection: (section) => rows.some((r) => r._section === String(section)),
+    hasSection: (section) =>
+      rows.some((r) => r._section === String(section)) || mentioned.has(String(section)),
     lookup(act, section, subs) {
       const wanted = String(section)
       const matches = rows.filter((r) => r._section === wanted)
