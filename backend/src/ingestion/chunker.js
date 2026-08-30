@@ -34,10 +34,12 @@ function joinLines(lines) {
 }
 
 function pagesFor(offsets, start, end) {
-  const pages = offsets.filter((o) => o.end >= start).filter((o, i, arr) => {
-    const prevEnd = i === 0 ? 0 : arr[i - 1].end
-    return prevEnd <= end
-  })
+  const pages = offsets
+    .filter((o) => o.end >= start)
+    .filter((o, i, arr) => {
+      const prevEnd = i === 0 ? 0 : arr[i - 1].end
+      return prevEnd <= end
+    })
   const list = pages.length ? pages.map((o) => o.page) : offsets.map((o) => o.page)
   return { start: Math.min(...list), end: Math.max(...list) }
 }
@@ -288,8 +290,6 @@ export async function buildStatuteChunks(pdfPath, meta) {
   const { pages } = await extractRange(pdfPath, SECTION_PAGES.from, SECTION_PAGES.to)
   const sections = collectSections(pages)
   const ingestedAt = new Date().toISOString()
-  const chunks = sections.flatMap((s) =>
-    chunkSection(s, { sourceUri: meta.sourceUri, ingestedAt })
-  )
+  const chunks = sections.flatMap((s) => chunkSection(s, { sourceUri: meta.sourceUri, ingestedAt }))
   return { sections, chunks }
 }

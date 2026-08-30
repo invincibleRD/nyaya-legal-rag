@@ -63,9 +63,7 @@ export async function extractPage(doc, pageNumber) {
   }
 
   // page number sits alone under the header
-  const bodyLines = toLines(body).filter(
-    (l) => !(l.y > HEADER_Y - 15 && /^\d{1,3}$/.test(l.text))
-  )
+  const bodyLines = toLines(body).filter((l) => !(l.y > HEADER_Y - 15 && /^\d{1,3}$/.test(l.text)))
 
   return { pageNumber, bodyLines, marginBlocks: groupMargin(toLines(margin)) }
 }

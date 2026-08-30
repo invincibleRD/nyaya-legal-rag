@@ -1,6 +1,11 @@
 import fs from 'node:fs'
 import { describe, it, expect } from 'vitest'
-import { toBlocks, findReferences, chunkSection, collectSections } from '../src/ingestion/chunker.js'
+import {
+  toBlocks,
+  findReferences,
+  chunkSection,
+  collectSections,
+} from '../src/ingestion/chunker.js'
 
 const line = (text, page = 1) => ({ text, page })
 
@@ -24,7 +29,9 @@ describe('toBlocks', () => {
   })
 
   it('does not treat a bracketed number mid-sentence as a subsection break', () => {
-    const blocks = toBlocks('(1) A person referred to in clause (2) of the said order shall comply.')
+    const blocks = toBlocks(
+      '(1) A person referred to in clause (2) of the said order shall comply.'
+    )
     expect(blocks).toHaveLength(1)
   })
 })
@@ -106,7 +113,9 @@ describe('chunkSection', () => {
       title: 'Definitions',
       pageStart: 2,
       pageEnd: 2,
-      lines: [line('(1) Bail means release. Provided that conditions may apply. Explanation.—Here.')],
+      lines: [
+        line('(1) Bail means release. Provided that conditions may apply. Explanation.—Here.'),
+      ],
     }
     const c = chunkSection(section, meta)[0]
     expect(c.has_proviso).toBe(true)
@@ -124,11 +133,13 @@ describe('collectSections', () => {
         bodyLines: [
           { y: 700, x: 142, text: '1. (1) This Act may be called the Sanhita.' },
           { y: 680, x: 118, text: 'nothing in section 136 shall apply to it.' },
-          { y: 660, x: 142, text: '2. (1) In this Sanhita, unless the context otherwise requires,—' },
+          {
+            y: 660,
+            x: 142,
+            text: '2. (1) In this Sanhita, unless the context otherwise requires,—',
+          },
         ],
-        marginBlocks: [
-          { topY: 700, text: 'Short title. Definitions.' },
-        ],
+        marginBlocks: [{ topY: 700, text: 'Short title. Definitions.' }],
       },
     ]
     const sections = collectSections(pages)
