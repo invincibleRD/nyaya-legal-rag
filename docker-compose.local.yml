@@ -1,0 +1,8 @@
+# for a slow link: use model weights already on disk instead of letting tei
+# fetch them. run scripts/fetch-model.sh first.
+# docker compose -f docker-compose.yml -f docker-compose.local.yml up -d
+services:
+  embeddings:
+    command: ["--model-id", "/models/bge-base-en-v1.5", "--port", "80"]
+    volumes:
+      - ./data/models:/models:ro
