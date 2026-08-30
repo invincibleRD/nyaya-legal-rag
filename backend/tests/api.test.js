@@ -3,6 +3,7 @@ import request from 'supertest'
 
 const conversations = new Map()
 const messages = new Map()
+let documents = []
 
 vi.mock('../src/core/store.js', () => ({
   createConversation: vi.fn(async (sessionId, title) => {
@@ -34,6 +35,31 @@ vi.mock('../src/core/store.js', () => ({
     return m
   }),
   getMessages: vi.fn(async (id) => messages.get(id) || []),
+  listDocuments: vi.fn(async (sessionId) => documents.filter((d) => d.session_id === sessionId)),
+  getDocument: vi.fn(async (id, sessionId) => {
+    const doc = documents.find((d) => d.id === id)
+    return doc && doc.session_id === sessionId ? doc : null
+  }),
+  createDocument: vi.fn(async (sessionId, doc) => {
+    const record = { id: 'doc-1', session_id: sessionId, status: 'queued', progress: '0', ...doc }
+    documents.push(record)
+    return record
+  }),
+  updateDocument: vi.fn(async () => {}),
+  deleteDocument: vi.fn(async (id, sessionId) => {
+    const i = documents.findIndex((d) => d.id === id && d.session_id === sessionId)
+    return i === -1 ? null : documents.splice(i, 1)[0]
+  }),
+  saveFeedback: vi.fn(async () => {}),
+}))
+
+vi.mock('../src/workers/queue.js', () => ({
+  enqueueIngest: vi.fn(async () => 'job-1'),
+  ingestQueue: vi.fn(),
+}))
+
+vi.mock('../src/ingestion/document.js', () => ({
+  purgeDocument: vi.fn(async () => {}),
 }))
 
 vi.mock('../src/llm/answer.js', () => ({
@@ -56,6 +82,7 @@ const SESSION = 'session-abcdef12'
 beforeEach(() => {
   conversations.clear()
   messages.clear()
+  documents = []
 })
 
 describe('health', () => {
@@ -200,5 +227,100 @@ describe('unknown routes', () => {
     const res = await request(app).get('/api/v1/nope')
     expect(res.status).toBe(404)
     expect(res.body.error).toBe('not_found')
+  })
+})
+
+describe('documents', () => {
+  const pdfBytes = Buffer.from('%PDF-1.4\n1 0 obj\n<<>>\nendobj\ntrailer\n%%EOF\n')
+
+  it('accepts a pdf and queues it', async () => {
+    const res = await request(app)
+      .post('/api/v1/documents/upload')
+      .set('x-session-id', SESSION)
+      .attach('file', pdfBytes, { filename: 'notice.pdf', contentType: 'application/pdf' })
+
+    expect(res.status).toBe(202)
+    expect(res.body.status).toBe('queued')
+    expect(res.body.document_id).toBeTruthy()
+    expect(res.body.job_id).toBeTruthy()
+  })
+
+  it('rejects a file that only claims to be a pdf', async () => {
+    // the header says pdf, the bytes say otherwise
+    const res = await request(app)
+      .post('/api/v1/documents/upload')
+      .set('x-session-id', SESSION)
+      .attach('file', Buffer.from('MZ this is an exe'), {
+        filename: 'evil.pdf',
+        contentType: 'application/pdf',
+      })
+    expect(res.status).toBe(415)
+    expect(res.body.error).toBe('unsupported_media_type')
+  })
+
+  it('rejects a type that is not pdf at all', async () => {
+    const res = await request(app)
+      .post('/api/v1/documents/upload')
+      .set('x-session-id', SESSION)
+      .attach('file', Buffer.from('hello'), { filename: 'a.txt', contentType: 'text/plain' })
+    expect(res.status).toBe(415)
+  })
+
+  it('requires a file', async () => {
+    const res = await request(app).post('/api/v1/documents/upload').set('x-session-id', SESSION)
+    expect(res.status).toBe(400)
+  })
+
+  it('lists only this session and reports status', async () => {
+    documents.push(
+      { id: 'd1', session_id: SESSION, filename: 'mine.pdf', status: 'ready', progress: '1' },
+      { id: 'd2', session_id: 'other-session1', filename: 'theirs.pdf', status: 'ready' }
+    )
+    const list = await request(app).get('/api/v1/documents').set('x-session-id', SESSION)
+    expect(list.body.documents.map((d) => d.id)).toEqual(['d1'])
+
+    const status = await request(app)
+      .get('/api/v1/documents/d1/status')
+      .set('x-session-id', SESSION)
+    expect(status.status).toBe(200)
+    expect(status.body.status).toBe('ready')
+  })
+
+  it("404s on another session's document", async () => {
+    documents.push({ id: 'd9', session_id: 'not-you-abcd', filename: 'x.pdf', status: 'ready' })
+    const res = await request(app).get('/api/v1/documents/d9/status').set('x-session-id', SESSION)
+    expect(res.status).toBe(404)
+  })
+
+  it('deletes and purges', async () => {
+    documents.push({ id: 'd3', session_id: SESSION, filename: 'gone.pdf', status: 'ready' })
+    const res = await request(app).delete('/api/v1/documents/d3').set('x-session-id', SESSION)
+    expect(res.status).toBe(204)
+    const { purgeDocument } = await import('../src/ingestion/document.js')
+    expect(purgeDocument).toHaveBeenCalledWith({ documentId: 'd3', sessionId: SESSION })
+  })
+
+  it("will not delete another session's document", async () => {
+    documents.push({ id: 'd4', session_id: 'not-you-abcd', filename: 'x.pdf', status: 'ready' })
+    const res = await request(app).delete('/api/v1/documents/d4').set('x-session-id', SESSION)
+    expect(res.status).toBe(404)
+  })
+})
+
+describe('feedback', () => {
+  it('accepts a rating', async () => {
+    const res = await request(app)
+      .post('/api/v1/feedback')
+      .set('x-session-id', SESSION)
+      .send({ conversation_id: 'conv-1', rating: 'up' })
+    expect(res.status).toBe(201)
+  })
+
+  it('rejects a rating it does not understand', async () => {
+    const res = await request(app)
+      .post('/api/v1/feedback')
+      .set('x-session-id', SESSION)
+      .send({ conversation_id: 'conv-1', rating: 'sideways' })
+    expect(res.status).toBe(400)
   })
 })
