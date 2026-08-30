@@ -1,0 +1,88 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    color-scheme: light;
+  }
+  html.dark {
+    color-scheme: dark;
+  }
+  body {
+    @apply bg-ink-50 text-ink-900 antialiased dark:bg-ink-900 dark:text-ink-100;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+  :focus-visible {
+    @apply outline-none ring-2 ring-brass-500 ring-offset-2 ring-offset-ink-50 dark:ring-offset-ink-900;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-md border border-ink-200 bg-white px-3 py-1.5
+      text-sm font-medium text-ink-800 transition-colors hover:bg-ink-100 disabled:cursor-not-allowed
+      disabled:opacity-50 dark:border-ink-700 dark:bg-ink-800 dark:text-ink-100 dark:hover:bg-ink-700;
+  }
+  .btn-primary {
+    @apply border-brass-600 bg-brass-500 text-white hover:bg-brass-600 dark:border-brass-600 dark:bg-brass-500
+      dark:text-white dark:hover:bg-brass-600;
+  }
+  .field {
+    @apply w-full rounded-md border border-ink-200 bg-white px-3 py-2 text-sm placeholder:text-ink-700/50
+      dark:border-ink-700 dark:bg-ink-800 dark:placeholder:text-ink-100/40;
+  }
+  .card {
+    @apply rounded-lg border border-ink-200 bg-white dark:border-ink-700 dark:bg-ink-800;
+  }
+  .skeleton {
+    @apply animate-pulse rounded bg-ink-200/70 dark:bg-ink-700/70;
+  }
+}
+
+.prose-answer {
+  @apply text-[15px] leading-7;
+}
+.prose-answer p {
+  @apply mb-3 last:mb-0;
+}
+.prose-answer ul {
+  @apply mb-3 list-disc space-y-1 pl-5;
+}
+.prose-answer ol {
+  @apply mb-3 list-decimal space-y-1 pl-5;
+}
+.prose-answer h1,
+.prose-answer h2,
+.prose-answer h3 {
+  @apply mb-2 mt-4 font-serif text-base font-semibold first:mt-0;
+}
+.prose-answer blockquote {
+  @apply mb-3 border-l-2 border-brass-400 pl-3 italic text-ink-800/80 dark:text-ink-100/70;
+}
+.prose-answer code {
+  @apply rounded bg-ink-100 px-1 py-0.5 font-mono text-[13px] dark:bg-ink-900;
+}
+.prose-answer pre {
+  @apply mb-3 overflow-x-auto rounded-md bg-ink-900 p-3 text-[13px] text-ink-100 dark:bg-black;
+}
+.prose-answer pre code {
+  @apply bg-transparent p-0;
+}
+.prose-answer a {
+  @apply text-brass-600 underline dark:text-brass-400;
+}
+.prose-answer table {
+  @apply mb-3 w-full text-left text-sm;
+}
+.prose-answer th,
+.prose-answer td {
+  @apply border-b border-ink-200 py-1.5 pr-3 dark:border-ink-700;
+}
