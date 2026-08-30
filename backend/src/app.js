@@ -5,6 +5,9 @@ import { logger } from './core/logger.js'
 import { config } from './core/config.js'
 import { registry, httpRequests, httpDuration } from './core/metrics.js'
 import { health } from './api/health.js'
+import { session } from './api/session.js'
+import { forms } from './api/forms.js'
+import { search } from './api/search.js'
 
 export function createApp() {
   const app = express()
@@ -33,6 +36,8 @@ export function createApp() {
   app.use(cors)
 
   app.use('/api/v1', health)
+  app.use('/api/v1', session, forms)
+  app.use('/api/v1', session, search)
 
   app.get('/api/v1/metrics', async (_req, res) => {
     res.set('Content-Type', registry.contentType)
