@@ -1,0 +1,8 @@
+# pins api/worker to the pushed GHCR image instead of a local build
+services:
+  api:
+    image: ${BACKEND_IMAGE}
+    pull_policy: always
+  worker:
+    image: ${BACKEND_IMAGE}
+    pull_policy: always
