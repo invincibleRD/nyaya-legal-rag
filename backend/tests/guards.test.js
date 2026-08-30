@@ -3,6 +3,7 @@ import { config } from '../src/core/config.js'
 import { findDocumentInjection, findInjection } from '../src/llm/guards/patterns.js'
 import { checkInput } from '../src/llm/guards/input.js'
 import { buildCitations, shouldRefuse, validateCitations } from '../src/llm/guards/output.js'
+import { getFastModel } from '../src/llm/provider.js'
 
 const ok = () => ({ category: 'ok', reason: '' })
 
@@ -225,7 +226,7 @@ describe('the classifier layer', () => {
     expect(res.allow).toBe(true)
 
     const [url, init] = fetched.mock.calls[0]
-    expect(url).toContain('gemini-2.0-flash-lite')
+    expect(url).toContain(getFastModel())
     const sent = JSON.parse(init.body).contents[0].parts[0].text
     expect(sent).toContain('the proviso limits it')
     expect(sent).not.toContain('what is section 35?')

@@ -105,7 +105,7 @@ describe('gemini', () => {
     const res = await getProvider().complete({ ...ask, model: getFastModel() })
 
     expect(res).toEqual({ text: 'out_of_scope', usage: { input_tokens: 40, output_tokens: 3 } })
-    expect(calls[0].url).toContain('gemini-2.0-flash-lite:generateContent')
+    expect(calls[0].url).toContain(`${getFastModel()}:generateContent`)
   })
 })
 
