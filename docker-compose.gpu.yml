@@ -10,3 +10,13 @@ services:
             - driver: nvidia
               count: 1
               capabilities: [gpu]
+
+  reranker:
+    image: ghcr.io/huggingface/text-embeddings-inference:86-1.7
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
