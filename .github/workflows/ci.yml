@@ -80,6 +80,33 @@ jobs:
         run: npm ci && npm run build
         working-directory: frontend
 
+  retrieval:
+    # the golden set needs a live index, which only the self-hosted box has.
+    # fork PRs never reach it, same guard as build.
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+    needs: [lint, test]
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - uses: actions/setup-node@v4.1.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+        working-directory: backend
+      - name: golden set regression gate
+        working-directory: backend
+        env:
+          QDRANT_URL: http://localhost:6333
+          EMBEDDING_URL: http://localhost:8081
+          RERANKER_URL: http://localhost:8082
+          RERANK_ENABLED: 'true'
+          # the bm25 stats live beside the deployed corpus, not in the checkout.
+          # without them the sparse leg is skipped and the test self-skips.
+          DATA_DIR: /home/ubuntu/hrn+/new/data
+        run: npx vitest run tests/retrieval.eval.test.js
+
   build:
     # fork PRs never reach the self-hosted runner
     if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository

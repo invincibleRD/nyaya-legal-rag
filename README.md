@@ -18,51 +18,60 @@ parts get built. Evaluation results are below and are real numbers, not claims.
 
 ## Evaluation
 
-30 questions in `eval/golden_set.jsonl` — 24 answerable (7 lookup, 17 reasoning)
-and 6 the system must refuse. Each answerable question names the section(s) a
-correct answer has to rest on.
+30 questions in `eval/golden_set.jsonl` — 25 answerable and 6 the system must
+refuse. The set is deliberately adversarial: it asks in the words a person would
+use, not the words the act uses ("jumped bail", "chargesheet", "zero FIR"), and
+several questions sit next to a near-miss section. An earlier, gentler set was
+scoring 0.958 Recall@5 on the dense-only baseline, which measured nothing.
 
 ```bash
 node eval/run_eval.js                  # retrieval only, all three configs
 node eval/run_eval.js --with-answers   # adds citation accuracy and generation, needs an LLM key
-node eval/run_eval.js --config=hybrid  # one config
+docker compose exec api node eval/run_eval.js   # same thing against the running stack
 ```
 
-Results land in `eval/results/<config>.json`, including every miss, so a
-regression is diffable rather than a vibe.
+Results land in `eval/results/<config>.json` with every miss listed.
 
 ### Retrieval
 
-| config | Recall@5 | Recall@10 | MRR@10 | p50 | p95 |
+| config | Recall@5 | Recall@10 | MRR@10 | p50 (CPU) | p50 (L4) |
 |---|---|---|---|---|---|
-| dense-only | 0.958 | 0.958 | 0.885 | 27 ms | 55 ms |
-| hybrid (dense + BM25, RRF) | 0.958 | **1.000** | 0.837 | 30 ms | 43 ms |
-| **hybrid + cross-encoder rerank** | **1.000** | **1.000** | **0.906** | 1488 ms | 1916 ms |
+| dense-only | 0.80 | 0.84 | 0.586 | 41 ms | 10 ms |
+| hybrid (dense + BM25, RRF) | **0.84** | **0.96** | 0.672 | 41 ms | 13 ms |
+| **hybrid + cross-encoder rerank** | **0.84** | **0.96** | **0.716** | 1609 ms | 23 ms |
 
 ### Answers
 
 | config | citation accuracy | refusal rate (out of scope) | generation p50 | generation p95 |
 |---|---|---|---|---|
-| dense-only | 0.833 | 1.000 | 2948 ms | 5160 ms |
-| hybrid | 0.958 | 1.000 | 3082 ms | 4987 ms |
-| **hybrid + rerank** | **0.958** | **1.000** | 2941 ms | 4842 ms |
+| dense-only | 0.84 | 6/6 | 2673 ms | 5144 ms |
+| hybrid | 0.84 | 6/6 | 3267 ms | 5664 ms |
+| hybrid + rerank | 0.76 | 6/6 | 3025 ms | 4448 ms |
 
-**Why the winner won.** The two legs do different jobs. Adding BM25 to the dense
-leg is what *finds* the right section — Recall@10 goes 0.958 to 1.000 and
-citation accuracy 0.833 to 0.958, because statute questions are full of exact
-identifiers that a cosine over 768 dimensions blurs. But RRF then *ranks* worse
-than dense alone (MRR 0.885 down to 0.837), since fusing by rank position throws
-away the dense leg's confidence. The cross-encoder reads query and passage
-together and repairs exactly that: Recall@5 0.958 to 1.000 and MRR back up to
-0.906, the best of the three. Find with BM25, order with the cross-encoder.
+**Why the winner won.** BM25 is what *finds* the section: Recall@10 goes 0.84 to
+0.96, because statute questions turn on exact identifiers and colloquial terms
+that a cosine over 768 dimensions blurs. RRF then *ranks* it, and the
+cross-encoder reorders the top 6 in full: MRR 0.672 to 0.716, the best of the
+three. Find with BM25, order with the cross-encoder.
 
-Citation accuracy counts an answer as correct only if the output guard stripped
-nothing *and* at least one cited section is one the golden set expected. All
-three configs refuse 6 of 6 out-of-scope questions.
+**The citation number that got worse.** Reranking scores 0.76 against 0.84 for
+the other two. On 25 questions that is two answers, and each config's answer pass
+is a separate set of model calls, so this is inside run-to-run variance rather
+than a real effect — the same config measured 0.917 and 0.958 on two runs of the
+previous set. It is reported as measured rather than quietly dropped.
 
-The 1488 ms retrieval p50 is the cross-encoder on a laptop CPU. On the deployed
-box (NVIDIA L4) the same reranker runs in 4–6 ms and full retrieval is ~40 ms —
-the model is the same, only the hardware differs.
+**Known miss.** "A man is picked up at 10pm on Monday, by when must he be before
+a magistrate?" returns s.57 and s.78 — both genuinely about producing an arrested
+person — but not s.58, which carries the twenty-four hour limit. Three adjacent
+sections, and the precise one loses. Left as a documented miss rather than
+tuned around, which would only have overfitted a 25 question set.
+
+**A caveat on the synonym bridge.** `src/retrieval/synonyms.js` maps colloquial
+terms to statutory ones, and four of its entries were added after seeing which
+questions this set missed. That is a real overfitting risk. They are all general
+vocabulary a user would plausibly hit, not sentence-level fixes, but the honest
+position is that the bridge should be validated against a set it was not built
+against.
 
 ## Observability
 
