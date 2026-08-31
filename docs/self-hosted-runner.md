@@ -156,3 +156,58 @@ That adds however long the pull takes, typically 30-60 seconds on a warm layer c
 
 Rollback only covers the backend container. It does not undo anything written to Qdrant or
 Redis, so a migration or a re-ingest needs its own plan.
+
+## What is actually registered (31 Aug 2026)
+
+| | |
+|---|---|
+| host | `hrn-1`, the same GCP VM that serves hrn.ultronai.me (g2-standard-8, NVIDIA L4) |
+| runner name | `hrn-1-gpu` |
+| labels | `self-hosted, Linux, X64, gpu` |
+| runs as | `ubuntu` — it needs the docker group and write access to the deployed compose project |
+| service | `actions.runner.invincibleRD-nyaya-legal-rag.hrn-1-gpu.service`, enabled at boot |
+| version | 2.321.0, self-updated to 2.336.0 on first connect |
+
+```bash
+sudo systemctl status actions.runner.invincibleRD-nyaya-legal-rag.hrn-1-gpu
+cd ~/actions-runner && sudo ./svc.sh stop   # and ./svc.sh start
+```
+
+It picked up the queued `build` job within seconds of the service starting, which
+is the evidence that it works.
+
+### Jobs that need it
+
+- `build` — docker build, Trivy scan, push to GHCR
+- `deploy` — on push to `main` only
+- `retrieval` — the golden set regression gate. It lives here rather than on
+  `ubuntu-latest` because it needs a live Qdrant with the act already ingested.
+  `DATA_DIR` points at the deployed `data/` so the BM25 stats are found; without
+  them the sparse leg is skipped and the test self-skips rather than silently
+  measuring dense-only.
+
+### Hardening
+
+This repository is public, so an unguarded self-hosted runner would execute
+arbitrary code from any fork's pull request. Every self-hosted job is gated:
+
+```yaml
+if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+```
+
+A PR from a fork therefore never reaches this machine — it gets lint, tests,
+secret scanning and the frontend build on GitHub's runners and stops there.
+
+Still true and worth saying plainly: the runner is not sandboxed. It shares a box
+with the running application, and a malicious commit pushed directly to this repo
+would run as `ubuntu` with docker access, which is root-equivalent. For anything
+beyond a single-maintainer assignment repo this should be an ephemeral runner on
+a throwaway VM, one job per machine.
+
+### Token handling
+
+The registration token is short-lived (one hour) and was never written to disk or
+into a command line — it was piped from `gh api` straight into `config.sh` over
+stdin. `~/actions-runner/.credentials` holds the long-lived credential; it is
+mode 600 and owned by `ubuntu`. To revoke, `sudo ./svc.sh uninstall && ./config.sh remove`,
+or delete the runner from the repository settings.
