@@ -4,6 +4,9 @@ import { logger } from '../core/logger.js'
 // "section 103", "s.63", "BNSS 103", "section 35(3)". the \b stops "BNSS 2023" matching.
 const SECTION_RE =
   /\b(?:sections?|secs?\.?|s\.|u\/s\.?|bnss|bns|crpc)\s*(\d{1,3})\b\s*(\([0-9a-z]{1,3}\))?/i
+// the first schedule holds BNS sections, so which act was named decides which
+// section 63 the user means
+const ACT_RE = /\b(bnss|bns|crpc)\b/i
 
 const INTENTS = new Set(['concept', 'document', 'out_of_scope'])
 
@@ -25,7 +28,8 @@ Use "" when the intent is out_of_scope.`
 export function detectSectionIntent(text) {
   const m = SECTION_RE.exec(text || '')
   if (!m) return null
-  return { number: m[1], subsection: m[2] || null }
+  const act = ACT_RE.exec(text || '')
+  return { number: m[1], subsection: m[2] || null, act: act ? act[1].toUpperCase() : null }
 }
 
 export async function transformQuery({ message, history }) {

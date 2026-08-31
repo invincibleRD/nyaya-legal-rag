@@ -85,10 +85,16 @@ async function hybridSearch(collection, { dense, sparseText, filter, limit, mode
   }))
 }
 
+// this corpus is the BNSS, so a section number with no act named is a BNSS one
+const DEFAULT_ACT = 'BNSS'
+
 // "what is section 103" must return section 103, not whatever the cosine felt
 // like. pull it directly and put it on top.
 async function directLookup(collection, intent) {
-  const must = [{ key: 'section_number', match: { value: String(intent.number) } }]
+  const must = [
+    { key: 'section_number', match: { value: String(intent.number) } },
+    { key: 'act_short', match: { value: intent.act || DEFAULT_ACT } },
+  ]
   const points = await scroll(collection, { filter: { must }, limit: 10 })
   return points.sort((a, b) => (a.payload.chunk_id > b.payload.chunk_id ? 1 : -1))
 }
