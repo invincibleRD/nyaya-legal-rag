@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { config } from '../core/config.js'
+import { dependencyUp } from '../core/metrics.js'
 
 export const health = Router()
 
@@ -9,10 +10,13 @@ health.get('/health', (_req, res) => {
 
 // each dependency reports on its own so a red light points at the right box
 health.get('/health/ready', async (_req, res) => {
-  const checks = await Promise.all([
+  const probes = [
     probe('qdrant', `${config.qdrant.url}/readyz`),
     probe('embeddings', `${config.embedding.url}/health`),
-  ])
+  ]
+  if (config.rerank.enabled) probes.push(probe('reranker', `${config.rerank.url}/health`))
+  const checks = await Promise.all(probes)
+  for (const c of checks) dependencyUp.set({ dependency: c.name }, c.ok ? 1 : 0)
 
   const services = Object.fromEntries(checks.map((c) => [c.name, c]))
   const ready = checks.every((c) => c.ok)

@@ -7,6 +7,7 @@ import { rerank } from './rerank.js'
 import { detectSectionIntent } from './query.js'
 import { config } from '../core/config.js'
 import { logger } from '../core/logger.js'
+import { retrievalDuration, since } from '../core/metrics.js'
 
 function statuteFilter(filters) {
   const must = []
@@ -196,5 +197,6 @@ export async function retrieve({
   }))
 
   const topScore = Math.max(0, ...results.map((r) => r.dense_score ?? 0))
+  retrievalDuration.observe({ route }, since(started))
   return { results, route, intent, top_score: topScore, took_ms: Date.now() - started }
 }

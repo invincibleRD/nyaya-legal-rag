@@ -8,6 +8,14 @@ import { transformQuery } from '../retrieval/query.js'
 import { retrieve } from '../retrieval/hybrid.js'
 import { estimateCost } from './cost.js'
 import { config } from '../core/config.js'
+import {
+  citationsStripped,
+  generationDuration,
+  llmTokens,
+  queryCost,
+  refusals,
+  since,
+} from '../core/metrics.js'
 import { logger } from '../core/logger.js'
 
 // The whole request as a stream of events. The route only has to turn these
@@ -25,6 +33,7 @@ export async function* answerStream({
 
   const guard = await checkInput({ message, history })
   if (!guard.allow) {
+    refusals.inc({ reason: guard.category })
     yield { type: 'meta', conversation_id: conversationId, route: 'refused' }
     yield { type: 'token', text: refusalFor(guard.category) }
     yield {
@@ -51,6 +60,7 @@ export async function* answerStream({
   yield { type: 'meta', conversation_id: conversationId, route: found.route, intent: query.intent }
 
   if (shouldRefuse({ results: found.results })) {
+    refusals.inc({ reason: 'low_confidence' })
     log.info(
       { top: found.top_score, threshold: config.retrieval.confidenceThreshold },
       'refused, nothing above the confidence threshold'
@@ -99,10 +109,17 @@ export async function* answerStream({
   if (tail) yield { type: 'token', text: tail }
   const generationMs = Date.now() - generationStart
 
+  const model = config.llm.model
+  generationDuration.observe(since(generationStart))
+  llmTokens.inc({ direction: 'input', model }, usage.input_tokens || 0)
+  llmTokens.inc({ direction: 'output', model }, usage.output_tokens || 0)
+  queryCost.inc({ model }, estimateCost(usage))
+
   // the gate already kept invented markers off the wire; this second pass is
   // what tells us whether it had to, and builds the citation cards
   const checked = validateCitations({ answer: raw, contexts: clean })
   if (!checked.valid) {
+    citationsStripped.inc(checked.stripped.length)
     log.warn(
       { stripped: checked.stripped, prose: checked.invented_in_prose },
       'model cited something it was not given'

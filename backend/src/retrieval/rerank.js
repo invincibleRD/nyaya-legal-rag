@@ -1,5 +1,6 @@
 import { config } from '../core/config.js'
 import { logger } from '../core/logger.js'
+import { rerankDuration, since } from '../core/metrics.js'
 
 const TIMEOUT_MS = 8000
 
@@ -36,6 +37,7 @@ export async function rerank(query, rows, { signal } = {}) {
       .map((row, i) => ({ ...row, rerank_score: byIndex.get(i) ?? 0 }))
       .sort((a, b) => b.rerank_score - a.rerank_score)
 
+    rerankDuration.observe(since(started))
     logger.debug({ candidates: shortlist.length, ms: Date.now() - started }, 'reranked')
     return [...reordered, ...rest]
   } catch (err) {

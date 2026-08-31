@@ -4,6 +4,7 @@ import { Router } from 'express'
 import multer from 'multer'
 import rateLimit from 'express-rate-limit'
 import { config } from '../core/config.js'
+import { uploads } from '../core/metrics.js'
 import {
   createDocument,
   deleteDocument,
@@ -48,13 +49,17 @@ const limiter = rateLimit({
 
 documents.post('/documents/upload', limiter, (req, res) => {
   upload.single('file')(req, res, async (err) => {
-    if (err) return res.status(uploadStatus(err)).json(uploadError(err))
+    if (err) {
+      uploads.inc({ outcome: 'rejected' })
+      return res.status(uploadStatus(err)).json(uploadError(err))
+    }
     if (!req.file) {
       return res.status(400).json({ error: 'validation_error', message: 'a file is required' })
     }
 
     // trust the bytes, not the header the client sent
     if (!looksLikePdf(req.file.path)) {
+      uploads.inc({ outcome: 'rejected' })
       fs.rmSync(req.file.path, { force: true })
       return res
         .status(415)
@@ -74,6 +79,7 @@ documents.post('/documents/upload', limiter, (req, res) => {
       filename: req.file.originalname,
     })
     await updateDocument(doc.id, { job_id: String(jobId) })
+    uploads.inc({ outcome: 'accepted' })
 
     res.status(202).json({
       document_id: doc.id,

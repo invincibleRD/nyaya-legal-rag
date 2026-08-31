@@ -1,5 +1,6 @@
 import { config } from '../core/config.js'
 import { logger } from '../core/logger.js'
+import { embeddingDuration, since } from '../core/metrics.js'
 
 // bge wants an instruction on the query side only. getting this wrong silently
 // halves recall, so it lives in one place.
@@ -31,6 +32,7 @@ export async function embed(texts, { isQuery = false } = {}) {
   for (let i = 0; i < prepared.length; i += size) {
     out.push(...(await post(prepared.slice(i, i + size))))
   }
+  embeddingDuration.observe({ kind: isQuery ? 'query' : 'passage' }, since(started))
   if (prepared.length > size) {
     const ms = Date.now() - started
     logger.info(
