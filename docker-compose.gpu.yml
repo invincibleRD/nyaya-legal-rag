@@ -1,8 +1,9 @@
 # overlay for an nvidia box: docker compose -f docker-compose.yml -f docker-compose.gpu.yml up
-# image tag matches compute capability, 86 is ampere (rtx 30xx)
+# image tag matches compute capability: 86 ampere (rtx 30xx), 89 ada (L4, rtx 40xx),
+# 75 turing. set TEI_GPU_TAG in .env to match the card.
 services:
   embeddings:
-    image: ghcr.io/huggingface/text-embeddings-inference:86-1.7
+    image: ghcr.io/huggingface/text-embeddings-inference:${TEI_GPU_TAG:-86-1.7}
     deploy:
       resources:
         reservations:
@@ -12,7 +13,7 @@ services:
               capabilities: [gpu]
 
   reranker:
-    image: ghcr.io/huggingface/text-embeddings-inference:86-1.7
+    image: ghcr.io/huggingface/text-embeddings-inference:${TEI_GPU_TAG:-86-1.7}
     deploy:
       resources:
         reservations:

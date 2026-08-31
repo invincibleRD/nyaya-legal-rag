@@ -5,7 +5,7 @@ services:
     image: qdrant/qdrant:v1.12.5
     restart: unless-stopped
     ports:
-      - "6333:6333"
+      - "127.0.0.1:6333:6333"
     volumes:
       - qdrant_data:/qdrant/storage
     healthcheck:
@@ -21,7 +21,7 @@ services:
     restart: unless-stopped
     command: ["redis-server", "--appendonly", "yes"]
     ports:
-      - "6380:6379"
+      - "127.0.0.1:6380:6379"
     volumes:
       - redis_data:/data
     healthcheck:
@@ -36,7 +36,7 @@ services:
     restart: unless-stopped
     command: ["--model-id", "BAAI/bge-base-en-v1.5", "--port", "80"]
     ports:
-      - "8081:80"
+      - "127.0.0.1:8081:80"
     volumes:
       - hf_cache:/data
     healthcheck:
@@ -52,7 +52,7 @@ services:
     restart: unless-stopped
     command: ["--model-id", "BAAI/bge-reranker-base", "--port", "80"]
     ports:
-      - "8082:80"
+      - "127.0.0.1:8082:80"
     volumes:
       - hf_cache:/data
     healthcheck:
@@ -75,9 +75,9 @@ services:
       RERANKER_URL: http://reranker:80
       DATA_DIR: /app/data
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     volumes:
-      - app_data:/app/data
+      - ./data:/app/data
     depends_on:
       qdrant: { condition: service_healthy }
       redis: { condition: service_healthy }
@@ -97,7 +97,7 @@ services:
       RERANKER_URL: http://reranker:80
       DATA_DIR: /app/data
     volumes:
-      - app_data:/app/data
+      - ./data:/app/data
     depends_on:
       qdrant: { condition: service_healthy }
       redis: { condition: service_healthy }
@@ -107,9 +107,12 @@ services:
   frontend:
     build:
       context: ./frontend
+      args:
+        # the browser calls the api directly, so this is the public origin
+        VITE_API_URL: ${PUBLIC_URL:-http://localhost:8000}
     restart: unless-stopped
     ports:
-      - "5173:80"
+      - "127.0.0.1:5173:80"
     depends_on: [api]
     networks: [nyaya]
 
@@ -117,7 +120,6 @@ volumes:
   qdrant_data:
   redis_data:
   hf_cache:
-  app_data:
 
 networks:
   nyaya:
