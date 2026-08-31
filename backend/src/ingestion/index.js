@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto'
 import { buildStatuteChunks } from './chunker.js'
 import { buildScheduleChunks } from './schedule.js'
+import { buildFormChunks } from './formIndex.js'
 import { buildStats, encodeDocument } from '../retrieval/bm25.js'
 import { saveStats } from '../retrieval/stats.js'
 import { embed } from '../retrieval/embeddings.js'
@@ -36,11 +37,13 @@ export async function ingestStatute({ pdfPath, collection, onProgress = () => {}
   // the first schedule says whether an offence is bailable and who tries it,
   // questions the sections themselves never answer
   const { entries, chunks: scheduleChunks } = await buildScheduleChunks(pdfPath, meta)
-  const chunks = [...sectionChunks, ...scheduleChunks]
+  const formChunks = buildFormChunks(meta)
+  const chunks = [...sectionChunks, ...scheduleChunks, ...formChunks]
   logger.info(
     {
       sections: sections.length,
       schedule_entries: entries.length,
+      forms: formChunks.length,
       chunks: chunks.length,
     },
     'parsed the act'
