@@ -118,6 +118,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4.2.2
 
+      # no type=gha cache here: the runner is a long lived box that keeps its own
+      # layers, and the actions cache service returns html error pages to
+      # self-hosted runners often enough to fail the build on its own
       - uses: docker/setup-buildx-action@v3.7.1
 
       - uses: docker/build-push-action@v6.10.0
@@ -125,8 +128,6 @@ jobs:
           context: backend
           load: true
           tags: ${{ env.IMAGE }}:${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
 
       - uses: aquasecurity/trivy-action@v0.36.0
         with:
@@ -151,7 +152,6 @@ jobs:
           tags: |
             ${{ env.IMAGE }}:${{ github.sha }}
             ${{ env.IMAGE }}:${{ github.ref_name }}
-          cache-from: type=gha
 
   deploy:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
