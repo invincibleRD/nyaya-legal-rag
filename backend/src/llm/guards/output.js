@@ -44,11 +44,12 @@ export function makeMarkerChecker(contexts = []) {
     if (!parsed) return { verdict: 'invented', text: '' }
 
     const [, act, section, subs] = parsed
-    const ctx = known.lookup(act, section, subs)
-    if (!ctx) return { verdict: 'invented', text: '' }
+    const bound = known.lookup(act, section, subs)
+    if (!bound) return { verdict: 'invented', text: '' }
 
-    const clean = `[${ctx.act_short || act.toUpperCase()} s.${section}${subs.replace(/\s+/g, '')}]`
-    return { verdict: 'ok', text: clean, context: ctx, subsection: subs.trim() }
+    const { row: ctx, subsection } = bound
+    const clean = `[${ctx.act_short || act.toUpperCase()} s.${section}${subsection}]`
+    return { verdict: 'ok', text: clean, context: ctx, subsection }
   }
 }
 
@@ -81,6 +82,17 @@ export function validateCitations({ answer, contexts = [] }) {
     invented_in_prose: [...invented],
     valid: stripped.length === 0 && invented.size === 0,
   }
+}
+
+// "(a)" has to open a clause, not merely appear somewhere in the passage. the
+// labels nest, so (2)(a) is checked one bracket at a time.
+function holdsClause(text, label) {
+  const parts = label.match(/\([^)]{1,8}\)/g) || []
+  if (!parts.length) return false
+  return parts.every((part) => {
+    const inner = part.slice(1, -1).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    return new RegExp(`(^|[\\s.;:—-])\\(${inner}\\)`).test(String(text || ''))
+  })
 }
 
 function drop(marker, stripped) {
@@ -127,16 +139,19 @@ function indexContexts(contexts) {
       const sameAct = matches.filter((r) => !r._act || r._act === act.toUpperCase())
       if (!sameAct.length) return null
 
-      // bind to the chunk that really holds this subsection, otherwise the
-      // source panel shows a passage the citation is not in
+      // bind to the chunk that really holds this subsection, otherwise the source
+      // panel shows a passage the citation is not in. when nothing holds it we
+      // still cite the section, just without claiming the subsection.
       const label = (subs || '').replace(/\s+/g, '')
-      if (label) {
-        const exact = sameAct.find((r) => (r.subsection || '').replace(/\s+/g, '') === label)
-        if (exact) return exact
-        const inText = sameAct.find((r) => (r.text || '').includes(label))
-        if (inText) return inText
-      }
-      return sameAct[0]
+      if (!label) return { row: sameAct[0], subsection: '' }
+
+      const exact = sameAct.find((r) => (r.subsection || '').replace(/\s+/g, '') === label)
+      if (exact) return { row: exact, subsection: label }
+
+      const inText = sameAct.find((r) => holdsClause(r.text, label))
+      if (inText) return { row: inText, subsection: label }
+
+      return { row: sameAct[0], subsection: '' }
     },
   }
 }

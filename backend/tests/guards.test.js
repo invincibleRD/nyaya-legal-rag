@@ -307,11 +307,27 @@ describe('validateCitations', () => {
     expect(res.citations.map((c) => c.marker)).toEqual(['[BNSS s.103]', '[BNSS s.35]'])
   })
 
-  it('keeps subsections on the marker and the citation', () => {
-    const res = validateCitations({ answer: 'See [BNSS s.103(1)].', contexts })
+  it('keeps the subsection when a retrieved chunk actually holds it', () => {
+    const withClause = [
+      {
+        ...contexts[0],
+        subsection: '(1)',
+        text: '(1) Whenever any place liable to search is closed, the occupant shall allow it.',
+      },
+    ]
+    const res = validateCitations({ answer: 'See [BNSS s.103(1)].', contexts: withClause })
     expect(res.valid).toBe(true)
     expect(res.citations[0].marker).toBe('[BNSS s.103(1)]')
     expect(res.citations[0].subsection).toBe('(1)')
+  })
+
+  // citing s.35(1)(a) and s.35(1)(j) used to render the same passage, because a
+  // subsection nothing held fell back to the first chunk of the section
+  it('drops a subsection no retrieved chunk can evidence, rather than mis-binding it', () => {
+    const res = validateCitations({ answer: 'See [BNSS s.103(1)].', contexts })
+    expect(res.stripped).toEqual([])
+    expect(res.citations[0].marker).toBe('[BNSS s.103]')
+    expect(res.citations[0].subsection).toBeNull()
   })
 
   it('returns citations in the shape the api promises', () => {

@@ -5,7 +5,14 @@ coverage/
 .env.local
 *.log
 
-data/
+# the bare act itself is a public gazette and small, so a clean clone has the
+# corpus without fetching anything. everything else under data/ is output.
+data/*
+!data/raw/
+data/raw/*
+!data/raw/bnss-2023.pdf
+# the test suite writes uploads and a tesseract cache next to the backend
+backend/data/
 eval/results/*.json
 !eval/results/.gitkeep
 
