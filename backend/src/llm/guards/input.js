@@ -14,7 +14,15 @@ Anything about Indian criminal law is ok, including offences, procedure, bail,
 arrest, evidence, forms and follow-up questions. Do not judge whether a specific
 act contains the answer, retrieval decides that later.`
 
-export async function checkInput({ message, history = [], documentText = '' }, { classify } = {}) {
+// the session has an upload in play, so questions about its contents are the
+// point of the feature rather than something to screen out
+const WITH_DOCUMENT = `The user has uploaded their own document to this conversation.
+Questions about that document's contents are ok, whatever the subject.`
+
+export async function checkInput(
+  { message, history = [], documentText = '', hasDocuments = false },
+  { classify } = {}
+) {
   const text = String(message || '').trim()
   if (!text) return block('empty message', 'out_of_scope')
 
@@ -24,7 +32,12 @@ export async function checkInput({ message, history = [], documentText = '' }, {
   const inMessage = findInjection(text)
   if (inMessage) return block(inMessage, 'injection')
 
-  const verdict = await classifyOrAllow(classify || classifyWithModel, text, history)
+  const verdict = await classifyOrAllow(classify || classifyWithModel, text, history, hasDocuments)
+  // the user uploaded a file to ask about it, so "where did he work" is in scope
+  // even though it has nothing to do with criminal law
+  if (verdict.category === 'out_of_scope' && hasDocuments) {
+    return { allow: true, reason: '', category: 'ok', rewritten: text }
+  }
   if (verdict.category !== 'ok') return block(verdict.reason, verdict.category)
 
   return { allow: true, reason: '', category: 'ok', rewritten: text }
@@ -35,16 +48,16 @@ function block(reason, category) {
 }
 
 // a broken classifier must not take the product down, so errors mean allow
-async function classifyOrAllow(classify, message, history) {
+async function classifyOrAllow(classify, message, history, hasDocuments) {
   try {
-    return await classify(message, history)
+    return await classify(message, history, hasDocuments)
   } catch (err) {
     logger.warn({ err: err.message }, 'input classifier failed')
     return { category: 'ok', reason: 'classifier unavailable' }
   }
 }
 
-async function classifyWithModel(message, history) {
+async function classifyWithModel(message, history, hasDocuments) {
   const short = message.slice(0, 2000)
   const recent = history
     .slice(-2)
@@ -53,7 +66,7 @@ async function classifyWithModel(message, history) {
 
   const { text } = await getProvider().complete({
     model: getFastModel(),
-    system: SYSTEM,
+    system: hasDocuments ? `${SYSTEM}\n${WITH_DOCUMENT}` : SYSTEM,
     messages: [{ role: 'user', content: recent ? `${recent}\nuser: ${short}` : short }],
     temperature: 0,
     maxTokens: 80,

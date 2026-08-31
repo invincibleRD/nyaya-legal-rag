@@ -3,6 +3,7 @@ import { checkInput } from './guards/input.js'
 import { findDocumentInjection } from './guards/patterns.js'
 import { makeMarkerChecker, shouldRefuse, validateCitations } from './guards/output.js'
 import { createMarkerGate } from './markerGate.js'
+import { smallTalk } from './smalltalk.js'
 import { ANSWER_SYSTEM, buildContext, REFUSAL } from './prompts.js'
 import { transformQuery } from '../retrieval/query.js'
 import { retrieve } from '../retrieval/hybrid.js'
@@ -31,7 +32,23 @@ export async function* answerStream({
 }) {
   const started = Date.now()
 
-  const guard = await checkInput({ message, history })
+  // greetings and "who are you" are not statute questions and not refusals either
+  const chat = smallTalk(message)
+  if (chat) {
+    yield { type: 'meta', conversation_id: conversationId, route: 'smalltalk' }
+    yield { type: 'token', text: chat }
+    yield {
+      type: 'done',
+      refused: false,
+      answer: chat,
+      usage: { input_tokens: 0, output_tokens: 0 },
+      latency: { retrieval_ms: 0, generation_ms: 0, total_ms: Date.now() - started },
+      cost_usd: 0,
+    }
+    return
+  }
+
+  const guard = await checkInput({ message, history, hasDocuments: documentIds.length > 0 })
   if (!guard.allow) {
     refusals.inc({ reason: guard.category })
     yield { type: 'meta', conversation_id: conversationId, route: 'refused' }
