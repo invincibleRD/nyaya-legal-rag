@@ -1,0 +1,82 @@
+{
+  "title": "Nyaya — legal RAG",
+  "uid": "nyaya-rag",
+  "timezone": "browser",
+  "refresh": "10s",
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "requests per second by route",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "targets": [
+        { "expr": "sum by (route) (rate(nyaya_http_requests_total[5m]))", "legendFormat": "{{route}}" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "retrieval latency p50 / p95",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "targets": [
+        { "expr": "histogram_quantile(0.5, sum by (le) (rate(nyaya_retrieval_seconds_bucket[5m])))", "legendFormat": "p50" },
+        { "expr": "histogram_quantile(0.95, sum by (le) (rate(nyaya_retrieval_seconds_bucket[5m])))", "legendFormat": "p95" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "embedding vs rerank vs generation p95",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "targets": [
+        { "expr": "histogram_quantile(0.95, sum by (le) (rate(nyaya_embedding_seconds_bucket[5m])))", "legendFormat": "embedding" },
+        { "expr": "histogram_quantile(0.95, sum by (le) (rate(nyaya_rerank_seconds_bucket[5m])))", "legendFormat": "rerank" },
+        { "expr": "histogram_quantile(0.95, sum by (le) (rate(nyaya_generation_seconds_bucket[5m])))", "legendFormat": "generation" }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "estimated cost per query (USD)",
+      "gridPos": { "h": 8, "w": 6, "x": 12, "y": 8 },
+      "targets": [
+        { "expr": "sum(rate(nyaya_query_cost_usd_total[1h])) / clamp_min(sum(rate(nyaya_http_requests_total{route=\"/api/v1/chat\"}[1h])), 0.0001)" }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "spend so far (USD)",
+      "gridPos": { "h": 8, "w": 6, "x": 18, "y": 8 },
+      "targets": [{ "expr": "sum(nyaya_query_cost_usd_total)" }]
+    },
+    {
+      "type": "timeseries",
+      "title": "tokens per second",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+      "targets": [
+        { "expr": "sum by (direction) (rate(nyaya_llm_tokens_total[5m]))", "legendFormat": "{{direction}}" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "refusals by reason",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+      "targets": [
+        { "expr": "sum by (reason) (rate(nyaya_refusals_total[15m]))", "legendFormat": "{{reason}}" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "uploads and invented citations stripped",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 24 },
+      "targets": [
+        { "expr": "sum by (outcome) (rate(nyaya_uploads_total[15m]))", "legendFormat": "upload {{outcome}}" },
+        { "expr": "rate(nyaya_citations_stripped_total[15m])", "legendFormat": "citations stripped" }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "dependencies up",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 24 },
+      "targets": [{ "expr": "nyaya_dependency_up", "legendFormat": "{{dependency}}" }]
+    }
+  ],
+  "schemaVersion": 39,
+  "version": 1
+}
