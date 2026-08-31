@@ -245,7 +245,10 @@ function splitOversized(block) {
 
 export function chunkSection(section, meta) {
   const { text, offsets } = joinLines(section.lines)
-  const heading = `${ACT_SHORT} Section ${section.number}${section.title ? ' - ' + section.title : ''}`
+  // the chapter title says what the section is about in words the section itself
+  // may never use, "processes to compel appearance" over a form of summons
+  const chapter = section.chapterTitle ? `${section.chapterTitle}\n` : ''
+  const heading = `${chapter}${ACT_SHORT} Section ${section.number}${section.title ? ' - ' + section.title : ''}`
 
   let parts
   if (text.length <= MAX_CHARS) {

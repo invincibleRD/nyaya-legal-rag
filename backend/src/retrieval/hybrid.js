@@ -3,6 +3,7 @@ import { encodeQuery } from './bm25.js'
 import { loadStats } from './stats.js'
 import { search, scroll } from './qdrant.js'
 import { rrf } from './fuse.js'
+import { rerank } from './rerank.js'
 import { detectSectionIntent } from './query.js'
 import { config } from '../core/config.js'
 import { logger } from '../core/logger.js'
@@ -85,10 +86,16 @@ async function hybridSearch(collection, { dense, sparseText, filter, limit, mode
   }))
 }
 
+// this corpus is the BNSS, so a section number with no act named is a BNSS one
+const DEFAULT_ACT = 'BNSS'
+
 // "what is section 103" must return section 103, not whatever the cosine felt
 // like. pull it directly and put it on top.
 async function directLookup(collection, intent) {
-  const must = [{ key: 'section_number', match: { value: String(intent.number) } }]
+  const must = [
+    { key: 'section_number', match: { value: String(intent.number) } },
+    { key: 'act_short', match: { value: intent.act || DEFAULT_ACT } },
+  ]
   const points = await scroll(collection, { filter: { must }, limit: 10 })
   return points.sort((a, b) => (a.payload.chunk_id > b.payload.chunk_id ? 1 : -1))
 }
@@ -165,7 +172,11 @@ export async function retrieve({
 
   const [statuteRows, documentRows = []] = await Promise.all(tasks)
 
-  let ranked = [...statuteRows, ...documentRows].sort((a, b) => b.score - a.score)
+  const fused = [...statuteRows, ...documentRows].sort((a, b) => b.score - a.score)
+  // rerank on what the user actually asked, not the hyde passage. a question that
+  // names its section is already answered by the lookup below, so it skips the
+  // cross encoder and the second it costs.
+  let ranked = intent ? fused : await rerank(query, fused)
 
   if (intent) {
     const exact = await directLookup(statuteCollection, intent)
@@ -180,6 +191,7 @@ export async function retrieve({
     ...toCitation(r.item, r.source),
     fused_score: r.score,
     dense_score: r.dense_score ?? null,
+    rerank_score: r.rerank_score ?? null,
     exact_match: Boolean(r.exact),
   }))
 

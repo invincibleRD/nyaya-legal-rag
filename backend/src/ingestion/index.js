@@ -1,5 +1,7 @@
 import { createHash } from 'node:crypto'
 import { buildStatuteChunks } from './chunker.js'
+import { buildScheduleChunks } from './schedule.js'
+import { buildFormChunks } from './formIndex.js'
 import { buildStats, encodeDocument } from '../retrieval/bm25.js'
 import { saveStats } from '../retrieval/stats.js'
 import { embed } from '../retrieval/embeddings.js'
@@ -30,10 +32,22 @@ export function toPoints(chunks, vectors, stats) {
 
 export async function ingestStatute({ pdfPath, collection, onProgress = () => {} }) {
   const started = Date.now()
-  const { sections, chunks } = await buildStatuteChunks(pdfPath, {
-    sourceUri: config.corpus.sourceUri,
-  })
-  logger.info({ sections: sections.length, chunks: chunks.length }, 'parsed the act')
+  const meta = { sourceUri: config.corpus.sourceUri }
+  const { sections, chunks: sectionChunks } = await buildStatuteChunks(pdfPath, meta)
+  // the first schedule says whether an offence is bailable and who tries it,
+  // questions the sections themselves never answer
+  const { entries, chunks: scheduleChunks } = await buildScheduleChunks(pdfPath, meta)
+  const formChunks = buildFormChunks(meta)
+  const chunks = [...sectionChunks, ...scheduleChunks, ...formChunks]
+  logger.info(
+    {
+      sections: sections.length,
+      schedule_entries: entries.length,
+      forms: formChunks.length,
+      chunks: chunks.length,
+    },
+    'parsed the act'
+  )
 
   const stats = buildStats(chunks.map((c) => c.embed_text))
   saveStats(collection, stats)
@@ -51,5 +65,5 @@ export async function ingestStatute({ pdfPath, collection, onProgress = () => {}
 
   const ms = Date.now() - started
   logger.info({ chunks: chunks.length, ms }, 'statute ingested')
-  return { sections: sections.length, chunks: chunks.length, ms }
+  return { sections: sections.length, schedule_entries: entries.length, chunks: chunks.length, ms }
 }

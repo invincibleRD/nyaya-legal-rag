@@ -84,6 +84,22 @@ function groupMargin(lines) {
   return blocks.map((b) => ({ topY: b.topY, text: b.parts.join(' ').replace(/\s+/g, ' ').trim() }))
 }
 
+// the schedule tables need the runs as they are, the body/margin split only
+// makes sense for the sections
+export async function extractRuns(doc, pageNumber) {
+  const page = await doc.getPage(pageNumber)
+  const content = await page.getTextContent()
+  return content.items
+    .filter((i) => i.str.trim())
+    .map((i) => ({
+      x: i.transform[4],
+      y: i.transform[5],
+      width: i.width,
+      height: i.height,
+      str: i.str,
+    }))
+}
+
 export async function extractRange(pdfPath, from, to) {
   const doc = await openPdf(pdfPath)
   const pages = []

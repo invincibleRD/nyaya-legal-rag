@@ -28,6 +28,8 @@ export const config = {
   rerank: {
     enabled: bool(process.env.RERANK_ENABLED, false),
     url: process.env.RERANKER_URL || 'http://localhost:8082',
+    poolSize: num(process.env.RERANK_POOL, 6),
+    maxChars: num(process.env.RERANK_MAX_CHARS, 1800),
   },
 
   llm: {
@@ -42,7 +44,7 @@ export const config = {
   retrieval: {
     topK: num(process.env.RETRIEVAL_TOP_K, 8),
     candidatePool: num(process.env.CANDIDATE_POOL, 40),
-    rrfK: num(process.env.RRF_K, 60),
+    rrfK: num(process.env.RRF_K, 20),
     confidenceThreshold: num(process.env.CONFIDENCE_THRESHOLD, 0.58),
   },
 
