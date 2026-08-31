@@ -78,6 +78,8 @@ services:
       - "127.0.0.1:8000:8000"
     volumes:
       - ./data:/app/data
+      # the eval harness is a tool, not part of the shipped image
+      - ./eval:/app/eval
     depends_on:
       qdrant: { condition: service_healthy }
       redis: { condition: service_healthy }
