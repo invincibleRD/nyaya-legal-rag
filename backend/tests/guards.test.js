@@ -280,6 +280,19 @@ const contexts = [
 ]
 
 describe('validateCitations', () => {
+  // the context prints a page beside every passage and the model copies it into
+  // the marker. dropping those cost real citations off real answers.
+  it('keeps a real citation that carries a page number, and normalises it', () => {
+    const res = validateCitations({
+      answer: 'A summons is in writing [BNSS s.103, p.191].',
+      contexts,
+    })
+
+    expect(res.stripped).toEqual([])
+    expect(res.text).toContain('[BNSS s.103]')
+    expect(res.text).not.toContain('191')
+  })
+
   it('strips an invented section and keeps the real ones', () => {
     const answer =
       'A search needs a witness [BNSS s.103] and arrest without warrant is allowed [BNSS s.35]. ' +

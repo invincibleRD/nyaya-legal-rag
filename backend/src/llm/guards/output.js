@@ -11,9 +11,11 @@ const DOC_HINT = /^\[\s*doc\s*:/i
 // [doc: notice.pdf p.2], the only shape an upload is cited in
 const DOC_MARKER = /^\[\s*doc\s*:\s*(.+?)\s*,?\s*p\.?\s*(\d{1,4})\s*\]$/i
 
-// one act, one section, optional subsections
+// one act, one section, optional subsections. the context shows a page next to
+// every passage and the model copies it into the marker, so a trailing page is
+// tolerated and then dropped. the section still has to be one we retrieved.
 const STRICT =
-  /^\[\s*([A-Za-z]{2,5})\s*(?:s|ss|sec|section|§)?\.?\s*(\d+[A-Z]?)((?:\s*\([^)\]]{1,8}\))*)\s*\]$/i
+  /^\[\s*([A-Za-z]{2,5})\s*(?:s|ss|sec|section|§)?\.?\s*(\d+[A-Z]?)((?:\s*\([^)\]]{1,8}\))*)(?:\s*,?\s*(?:p|pg|page)s?\.?\s*\d{1,4})?\s*\]$/i
 
 // bare prose, "under section 999 of the BNSS"
 const PROSE = /\b(?:section|sec\.|s\.)\s*(\d{1,3}[A-Z]?)\b/gi
