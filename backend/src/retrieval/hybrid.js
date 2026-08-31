@@ -3,6 +3,7 @@ import { encodeQuery } from './bm25.js'
 import { loadStats } from './stats.js'
 import { search, scroll } from './qdrant.js'
 import { rrf } from './fuse.js'
+import { rerank } from './rerank.js'
 import { detectSectionIntent } from './query.js'
 import { config } from '../core/config.js'
 import { logger } from '../core/logger.js'
@@ -171,7 +172,11 @@ export async function retrieve({
 
   const [statuteRows, documentRows = []] = await Promise.all(tasks)
 
-  let ranked = [...statuteRows, ...documentRows].sort((a, b) => b.score - a.score)
+  const fused = [...statuteRows, ...documentRows].sort((a, b) => b.score - a.score)
+  // rerank on what the user actually asked, not the hyde passage. a question that
+  // names its section is already answered by the lookup below, so it skips the
+  // cross encoder and the second it costs.
+  let ranked = intent ? fused : await rerank(query, fused)
 
   if (intent) {
     const exact = await directLookup(statuteCollection, intent)
@@ -186,6 +191,7 @@ export async function retrieve({
     ...toCitation(r.item, r.source),
     fused_score: r.score,
     dense_score: r.dense_score ?? null,
+    rerank_score: r.rerank_score ?? null,
     exact_match: Boolean(r.exact),
   }))
 
