@@ -28,19 +28,33 @@ describe('detectSectionIntent', () => {
     expect(detectSectionIntent('what is section 103 BNSS?')).toEqual({
       number: '103',
       subsection: null,
+      act: 'BNSS',
     })
   })
 
   it('handles the s.63 shorthand', () => {
-    expect(detectSectionIntent('s.63')).toEqual({ number: '63', subsection: null })
+    expect(detectSectionIntent('s.63')).toEqual({ number: '63', subsection: null, act: null })
   })
 
   it('handles the act followed by a bare number', () => {
-    expect(detectSectionIntent('BNSS 103')).toEqual({ number: '103', subsection: null })
+    expect(detectSectionIntent('BNSS 103')).toEqual({
+      number: '103',
+      subsection: null,
+      act: 'BNSS',
+    })
   })
 
   it('keeps the subsection', () => {
-    expect(detectSectionIntent('section 35(3)')).toEqual({ number: '35', subsection: '(3)' })
+    expect(detectSectionIntent('section 35(3)')).toEqual({
+      number: '35',
+      subsection: '(3)',
+      act: null,
+    })
+  })
+
+  it('remembers which act was named, the schedule holds BNS sections too', () => {
+    expect(detectSectionIntent('is BNS section 351 bailable')?.act).toBe('BNS')
+    expect(detectSectionIntent('is section 351 bailable')?.act).toBeNull()
   })
 
   it('handles sec. and u/s', () => {
