@@ -4,6 +4,7 @@ import { loadStats } from './stats.js'
 import { search, scroll } from './qdrant.js'
 import { rrf } from './fuse.js'
 import { rerank } from './rerank.js'
+import { expandQuery } from './synonyms.js'
 import { detectSectionIntent } from './query.js'
 import { config } from '../core/config.js'
 import { logger } from '../core/logger.js'
@@ -66,11 +67,20 @@ async function hybridSearch(collection, { dense, sparseText, filter, limit, mode
   const stats = loadStats(collection)
   const legs = []
 
+  // no stats means no bm25, and the whole thing quietly becomes dense-only.
+  // that is a real drop in recall, so say so rather than let it pass unnoticed.
+  if (mode !== 'dense' && !stats) {
+    logger.warn({ collection }, 'no bm25 stats on disk, falling back to dense only')
+  }
+
   if (mode !== 'sparse') {
     legs.push(search(collection, { vector: dense, filter, limit }))
   }
   if (mode !== 'dense' && stats) {
-    legs.push(search(collection, { sparse: encodeQuery(sparseText, stats), filter, limit }))
+    // the act's own words get added here, so bm25 can match a question phrased
+    // the way people speak against a statute phrased the way statutes are written
+    const lexical = encodeQuery(expandQuery(sparseText), stats)
+    legs.push(search(collection, { sparse: lexical, filter, limit }))
   }
 
   const [denseHits = [], sparseHits = []] = await Promise.all(legs)
