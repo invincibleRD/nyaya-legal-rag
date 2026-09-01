@@ -83,6 +83,7 @@ vi.mock('../src/retrieval/hybrid.js', () => ({
 }))
 
 const { createApp } = await import('../src/app.js')
+const { config } = await import('../src/core/config.js')
 const app = createApp()
 const SESSION = 'session-abcdef12'
 
@@ -110,6 +111,15 @@ describe('health', () => {
     expect(res.status).toBe(200)
     expect(res.body.openapi).toBe('3.0.3')
     expect(Object.keys(res.body.paths)).toContain('/chat')
+  })
+
+  it('echoes an allowed origin and ignores one that is not', async () => {
+    const [allowed] = config.corsOrigins
+    const yes = await request(app).get('/api/v1/health').set('origin', allowed)
+    expect(yes.headers['access-control-allow-origin']).toBe(allowed)
+
+    const no = await request(app).get('/api/v1/health').set('origin', 'https://not-ours.example')
+    expect(no.headers['access-control-allow-origin']).toBeUndefined()
   })
 })
 

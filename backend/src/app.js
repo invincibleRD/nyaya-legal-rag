@@ -85,8 +85,15 @@ function securityHeaders(_req, res, next) {
   next()
 }
 
+// several allowed origins, so the header has to echo the caller rather than
+// carry a list — a browser rejects more than one value. an origin that is not
+// on the list simply gets no header, which is what blocks it.
 function cors(req, res, next) {
-  res.setHeader('Access-Control-Allow-Origin', config.corsOrigin)
+  const origin = (req.get('origin') || '').replace(/\/$/, '')
+  if (origin && config.corsOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin)
+    res.setHeader('Vary', 'Origin')
+  }
   res.setHeader('Access-Control-Allow-Headers', 'content-type, x-session-id, x-request-id')
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS')
   if (req.method === 'OPTIONS') return res.sendStatus(204)
