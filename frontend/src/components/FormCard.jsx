@@ -47,7 +47,7 @@ export default function FormCard({ form, onPreview, onError }) {
 
       <h3 className="mt-2 font-serif text-[15px] font-semibold leading-snug">{form.title}</h3>
 
-      <p className="mt-1 text-xs text-ink-700 dark:text-ink-100/60">
+      <p className="mt-1 text-xs text-ink-500">
         {form.see_section && <>See section {form.see_section} · </>}
         {pages} · {form.page_count} {form.page_count === 1 ? 'page' : 'pages'}
         {form.bytes ? ` · ${size(form.bytes)}` : ''}

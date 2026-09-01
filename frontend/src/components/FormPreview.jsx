@@ -43,9 +43,7 @@ export default function FormPreview({ form, onClose }) {
       >
         <div className="flex items-center gap-3 border-b border-ink-200 px-4 py-3 dark:border-ink-700">
           <div className="min-w-0">
-            <p className="font-mono text-[11px] text-ink-700 dark:text-ink-100/60">
-              {form.form_number}
-            </p>
+            <p className="font-mono text-[11px] text-ink-500">{form.form_number}</p>
             <h2 className="truncate font-serif text-base font-semibold">{form.title}</h2>
           </div>
           <button

@@ -57,7 +57,7 @@ export default function FormsPanel() {
         <div className="flex flex-wrap items-end gap-3">
           <div>
             <h1 className="font-serif text-xl font-semibold">Forms</h1>
-            <p className="text-sm text-ink-700 dark:text-ink-100/60">
+            <p className="text-sm text-ink-500">
               Every form extracted from the schedule, split into its own PDF.
             </p>
           </div>
@@ -73,7 +73,7 @@ export default function FormsPanel() {
 
         <div className="sticky top-0 z-10 -mx-1 mt-4 flex flex-wrap items-center gap-3 bg-ink-50/95 px-1 py-2 backdrop-blur dark:bg-ink-900/95">
           <div className="relative min-w-[14rem] flex-1">
-            <Search className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-700 dark:text-ink-100/50" />
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-500" />
             <input
               type="search"
               className="field pl-8"
@@ -90,8 +90,7 @@ export default function FormsPanel() {
               checked={reviewOnly}
               onChange={(e) => setReviewOnly(e.target.checked)}
             />
-            Needs review only{' '}
-            {flagged > 0 && <span className="text-ink-700 dark:text-ink-100/50">({flagged})</span>}
+            Needs review only {flagged > 0 && <span className="text-ink-500">({flagged})</span>}
           </label>
         </div>
 
@@ -104,12 +103,12 @@ export default function FormsPanel() {
         {loading ? (
           <FormsSkeleton />
         ) : visible.length === 0 ? (
-          <p className="card p-6 text-center text-sm text-ink-700 dark:text-ink-100/60">
+          <p className="card p-6 text-center text-sm text-ink-500">
             No forms match {query ? `"${query}"` : 'this filter'}.
           </p>
         ) : (
           <>
-            <p className="mb-2 text-xs text-ink-700 dark:text-ink-100/50" aria-live="polite">
+            <p className="mb-2 text-xs text-ink-500" aria-live="polite">
               {visible.length} {visible.length === 1 ? 'form' : 'forms'}
             </p>
             <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">

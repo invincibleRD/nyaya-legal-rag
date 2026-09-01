@@ -11,6 +11,7 @@ export default function App() {
   const [theme, toggleTheme] = useTheme()
   const [tab, setTab] = useState('chat')
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [collapsed, setCollapsed] = useState(false)
   const [conversations, setConversations] = useState([])
   const [loadingConversations, setLoadingConversations] = useState(true)
   const [currentId, setCurrentId] = useState(null)
@@ -40,6 +41,7 @@ export default function App() {
     <div className="flex h-[100dvh] overflow-hidden">
       <Sidebar
         open={sidebarOpen}
+        collapsed={collapsed}
         onClose={() => setSidebarOpen(false)}
         conversations={conversations}
         loading={loadingConversations}
@@ -57,7 +59,13 @@ export default function App() {
       />
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <TopBar tab={tab} onTab={setTab} onMenu={() => setSidebarOpen(true)} />
+        <TopBar
+          tab={tab}
+          onTab={setTab}
+          onMenu={() => setSidebarOpen(true)}
+          collapsed={collapsed}
+          onToggleSidebar={() => setCollapsed((c) => !c)}
+        />
         {tab === 'chat' ? (
           <ChatPanel
             key={resetCount}

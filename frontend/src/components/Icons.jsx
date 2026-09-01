@@ -99,3 +99,25 @@ export const Warning = (p) => (
     <path d="M12 4l9 16H3l9-16zM12 10v4M12 17.5v.5" />
   </svg>
 )
+export const PanelLeft = (p) => (
+  <svg {...base} {...p}>
+    <rect x="3" y="4" width="18" height="16" rx="2" />
+    <path d="M9 4v16" />
+  </svg>
+)
+export const ArrowDown = (p) => (
+  <svg {...base} {...p}>
+    <path d="M12 5v14M6 13l6 6 6-6" />
+  </svg>
+)
+export const Scales = (p) => (
+  <svg {...base} {...p}>
+    <path d="M12 4v16M8 20h8M6 8h12M6 8l-3 6a3 3 0 0 0 6 0zM18 8l3 6a3 3 0 0 1-6 0z" />
+  </svg>
+)
+export const Eye = (p) => (
+  <svg {...base} {...p}>
+    <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z" />
+    <circle cx="12" cy="12" r="2.5" />
+  </svg>
+)

@@ -8,8 +8,10 @@ export function useChat({ conversationId, documentIds, onStarted, onFinished }) 
   const [streaming, setStreaming] = useState(false)
   const [error, setError] = useState(null)
 
-  // the id the stream is writing into, which leads the prop on a brand new conversation
-  const ownId = useRef(conversationId)
+  // the id the stream is writing into, which leads the prop on a brand new
+  // conversation. undefined rather than the prop so a remount — switching to the
+  // forms tab and back — still fetches instead of showing an empty thread
+  const ownId = useRef(undefined)
   const abort = useRef(null)
 
   useEffect(() => () => abort.current?.abort(), [])

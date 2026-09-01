@@ -9,17 +9,19 @@ export default function StageBar({ status, progress = 0 }) {
 
   return (
     <div>
-      <div className="h-1 w-full overflow-hidden rounded-full bg-ink-200 dark:bg-ink-700">
+      <div className="h-1 w-full overflow-hidden rounded-full bg-ink-200 dark:bg-ink-750">
         <div
-          className="h-full rounded-full bg-brass-500 transition-[width] duration-500"
+          className="h-full rounded-full bg-brass-500 transition-[width] duration-500 ease-out"
           style={{ width: `${Math.max(6, Math.min(100, pct))}%` }}
         />
       </div>
-      <ol className="mt-1 flex justify-between text-[11px] text-ink-700 dark:text-ink-100/60">
+      <ol className="mt-1.5 flex justify-between text-[10px] font-medium uppercase tracking-wide text-ink-400">
         {STAGES.map((stage, i) => (
           <li
             key={stage}
-            className={i <= current ? 'font-medium text-brass-600 dark:text-brass-400' : ''}
+            className={
+              i <= current ? 'text-brass-600 transition-colors dark:text-brass-400' : undefined
+            }
           >
             {LABELS[stage]}
           </li>

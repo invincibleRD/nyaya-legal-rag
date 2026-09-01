@@ -52,7 +52,9 @@ export default function ChatPanel({ conversationId, onStarted, onFinished, docum
         onDrop={onDrop}
       >
         {chat.loading ? (
-          <MessagesSkeleton />
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            <MessagesSkeleton />
+          </div>
         ) : chat.messages.length === 0 ? (
           <EmptyState onPick={chat.send} />
         ) : (
@@ -69,26 +71,28 @@ export default function ChatPanel({ conversationId, onStarted, onFinished, docum
           {chat.streaming ? 'Generating an answer' : ''}
         </p>
 
-        <div className="mx-auto w-full max-w-3xl space-y-2 px-3">
-          {documents.error && (
-            <ErrorNotice onDismiss={documents.clearError}>{documents.error}</ErrorNotice>
-          )}
-          {chat.error && (
-            <ErrorNotice
-              onDismiss={chat.clearError}
-              onRetry={chat.messages.length ? chat.regenerate : undefined}
-            >
-              {chat.error}
-            </ErrorNotice>
-          )}
-          {busyDocs.length > 0 && (
-            <ul className="space-y-1.5" aria-live="polite">
-              {busyDocs.map((d) => (
-                <DocumentItem key={d.document_id} doc={d} />
-              ))}
-            </ul>
-          )}
-        </div>
+        {(documents.error || chat.error || busyDocs.length > 0) && (
+          <div className="mx-auto w-full max-w-3xl shrink-0 space-y-2 px-3 pb-1">
+            {documents.error && (
+              <ErrorNotice onDismiss={documents.clearError}>{documents.error}</ErrorNotice>
+            )}
+            {chat.error && (
+              <ErrorNotice
+                onDismiss={chat.clearError}
+                onRetry={chat.messages.length ? chat.regenerate : undefined}
+              >
+                {chat.error}
+              </ErrorNotice>
+            )}
+            {busyDocs.length > 0 && (
+              <ul className="space-y-1.5" aria-live="polite">
+                {busyDocs.map((d) => (
+                  <DocumentItem key={d.document_id} doc={d} />
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
 
         <Composer
           onSend={chat.send}
@@ -99,9 +103,11 @@ export default function ChatPanel({ conversationId, onStarted, onFinished, docum
         />
 
         {dragging && (
-          <div className="pointer-events-none absolute inset-3 z-10 flex animate-fadeIn flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-brass-400 bg-ink-50/90 text-sm font-medium dark:bg-ink-900/90">
-            <Upload width={24} height={24} />
-            Drop a PDF to add it to this session
+          <div className="pointer-events-none absolute inset-3 z-20 flex animate-fadeIn flex-col items-center justify-center gap-2.5 rounded-2xl border-2 border-dashed border-brass-400 bg-ink-50/90 backdrop-blur-sm dark:bg-ink-900/90">
+            <span className="grid h-11 w-11 place-items-center rounded-2xl bg-brass-500/15 text-brass-600 dark:text-brass-400">
+              <Upload width={22} height={22} />
+            </span>
+            <p className="text-sm font-medium">Drop a PDF to add it to this session</p>
           </div>
         )}
       </div>
