@@ -46,7 +46,7 @@ flowchart TD
 
 1. `POST /api/v1/chat`. `x-session-id` identifies the caller; a request id is
    minted and rides every log line from here on.
-2. **Input guardrails.** 15 regex rules run first — they cost nothing and catch
+2. **Input guardrails.** 16 regex rules run first — they cost nothing and catch
    the obvious injections. Anything that survives goes to a small-model
    classifier that decides `concept | document | out_of_scope`. A pattern hit
    never fails open, even if the classifier disagrees.
@@ -55,12 +55,12 @@ flowchart TD
    in the voice of a bare act. If the question names a section (`s.103`,
    `BNS 351`), that is recorded as a lookup intent and HyDE is skipped.
 4. **Retrieval.** Three legs:
-   - *dense*: the HyDE passage (or the raw question) embedded with
+   - _dense_: the HyDE passage (or the raw question) embedded with
      bge-base-en-v1.5, query-side instruction prefix applied.
-   - *sparse*: BM25 over Qdrant sparse vectors. The query passes through the
+   - _sparse_: BM25 over Qdrant sparse vectors. The query passes through the
      synonym bridge first, so "anticipatory bail" also searches for
      "apprehending arrest", which is what the act actually says.
-   - *direct lookup*: if a section number was detected, that section is pulled by
+   - _direct lookup_: if a section number was detected, that section is pulled by
      payload filter and pinned on top. The act is taken from the question and
      defaults to BNSS, because the First Schedule holds BNS sections and
      "section 63" means two different provisions.
@@ -68,7 +68,8 @@ flowchart TD
    Dense and sparse are fused with RRF at k=20. A cross-encoder reranks the top
    6 in full, then a diversity pass caps any one section at 2 chunks so three
    fragments of s.187 cannot crowd out everything else.
-5. **Confidence gate.** The best *cosine* — not the RRF score, which is a rank
+
+5. **Confidence gate.** The best _cosine_ — not the RRF score, which is a rank
    and not a similarity — must clear 0.58. Below that the bot says it does not
    know. Measured on this corpus: in-scope questions land 0.62–0.80, out-of-scope
    0.37–0.53.
@@ -142,11 +143,11 @@ about summonses when the section itself never uses those words.
 
 Three kinds of chunk share the schema and one collection:
 
-| kind | `act_short` | `chapter` | count | why it exists |
-|---|---|---|---|---|
-| statute section | BNSS | roman numeral | 643 | the bare act |
-| First Schedule entry | **BNS** | `First Schedule` | 441 | whether an offence is cognizable, bailable, and who tries it |
-| Second Schedule form | BNSS | `Second Schedule` | 58 | "which form summons an accused" is a form question, not a section question |
+| kind                 | `act_short` | `chapter`         | count | why it exists                                                              |
+| -------------------- | ----------- | ----------------- | ----- | -------------------------------------------------------------------------- |
+| statute section      | BNSS        | roman numeral     | 643   | the bare act                                                               |
+| First Schedule entry | **BNS**     | `First Schedule`  | 441   | whether an offence is cognizable, bailable, and who tries it               |
+| Second Schedule form | BNSS        | `Second Schedule` | 58    | "which form summons an accused" is a form question, not a section question |
 
 The schedule rows are BNS sections printed in the BNSS gazette, so they carry
 `act_short: "BNS"` and cite as `[BNS s.351]`. Keeping the acts apart is what
@@ -160,7 +161,7 @@ table whose rows the typesetter sometimes emits as a single run spanning two
 columns.
 
 - Runs are classified by coordinates, not font size alone — a marginal note is
-  both *small* and *outdented*, because chapter headings are small too.
+  both _small_ and _outdented_, because chapter headings are small too.
 - Section starts are gated on sequence: only the number that comes next is
   accepted, which kills every mid-sentence "section 187" false positive.
 - Schedule rows are assigned to columns by x position, and a run that crosses a
