@@ -3,6 +3,7 @@ import path from 'node:path'
 import { Router } from 'express'
 import archiver from 'archiver'
 import { config } from '../core/config.js'
+import { downloadAllLimiter } from './limits.js'
 
 export const forms = Router()
 
@@ -59,7 +60,7 @@ forms.get('/forms/search', (req, res) => {
 })
 
 // must come after /forms/search so the literal route wins
-forms.get('/forms/download-all', (_req, res) => {
+forms.get('/forms/download-all', downloadAllLimiter, (_req, res) => {
   const manifest = requireManifest(res)
   if (!manifest) return
 

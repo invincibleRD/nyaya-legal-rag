@@ -84,6 +84,19 @@ export const citationsStripped = new client.Counter({
   registers: [registry],
 })
 
+export const budgetTrips = new client.Counter({
+  name: 'nyaya_budget_trips_total',
+  help: 'requests refused because the daily spend ceiling was already reached',
+  registers: [registry],
+})
+
+export const throttled = new client.Counter({
+  name: 'nyaya_throttled_total',
+  help: 'requests refused by a limiter, by which one',
+  labelNames: ['limit'],
+  registers: [registry],
+})
+
 export const dependencyUp = new client.Gauge({
   name: 'nyaya_dependency_up',
   help: '1 when a dependency answered its health probe',

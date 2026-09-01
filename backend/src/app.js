@@ -1,5 +1,6 @@
 import express from 'express'
 import pinoHttp from 'pino-http'
+import swaggerUi from 'swagger-ui-express'
 import { randomUUID } from 'node:crypto'
 import { logger } from './core/logger.js'
 import { config } from './core/config.js'
@@ -11,10 +12,15 @@ import { search } from './api/search.js'
 import { chat } from './api/chat.js'
 import { documents } from './api/documents.js'
 import { feedback } from './api/feedback.js'
+import { openapiSpec } from './api/openapi.js'
+import { globalLimiter } from './api/limits.js'
 
 export function createApp() {
   const app = express()
   app.disable('x-powered-by')
+  // a hop count, never `true`, or any client can forge its own X-Forwarded-For
+  // and hand itself a fresh rate limit bucket per request
+  app.set('trust proxy', config.trustProxyHops)
 
   app.use(
     pinoHttp({
@@ -37,13 +43,18 @@ export function createApp() {
 
   app.use(express.json({ limit: '1mb' }))
   app.use(cors)
+  app.use(securityHeaders)
 
+  app.use('/api/v1', globalLimiter)
   app.use('/api/v1', health)
   app.use('/api/v1', session, forms)
   app.use('/api/v1', session, search)
   app.use('/api/v1', session, chat)
   app.use('/api/v1', session, documents)
   app.use('/api/v1', session, feedback)
+
+  app.get('/docs/openapi.json', (_req, res) => res.json(openapiSpec))
+  app.use('/docs', swaggerUi.serve, swaggerUi.setup(openapiSpec))
 
   app.get('/api/v1/metrics', async (_req, res) => {
     res.set('Content-Type', registry.contentType)
@@ -62,6 +73,16 @@ export function createApp() {
   })
 
   return app
+}
+
+// the few that matter without helmet. no HSTS: tls terminates at the load
+// balancer, and no CSP, which would break the swagger ui bundle at /docs.
+function securityHeaders(_req, res, next) {
+  res.setHeader('X-Content-Type-Options', 'nosniff')
+  res.setHeader('Referrer-Policy', 'no-referrer')
+  res.setHeader('X-Frame-Options', 'DENY')
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
+  next()
 }
 
 function cors(req, res, next) {

@@ -7,6 +7,12 @@ export const config = {
   logLevel: process.env.LOG_LEVEL || 'info',
   corsOrigin: process.env.CORS_ORIGIN || 'http://localhost:5173',
 
+  // number of proxies in front of us, counted from the socket inwards. never
+  // `true`: that would let any client forge its own source ip through
+  // X-Forwarded-For and walk past every ip keyed limit below.
+  // production is gclb -> nginx -> app, which is 3. see .env.example.
+  trustProxyHops: num(process.env.TRUST_PROXY_HOPS, 0),
+
   qdrant: {
     url: process.env.QDRANT_URL || 'http://localhost:6333',
     statuteCollection: process.env.STATUTE_COLLECTION || 'bnss_statute',
@@ -14,6 +20,7 @@ export const config = {
   },
 
   redisUrl: process.env.REDIS_URL || 'redis://localhost:6379',
+  redisEnabled: bool(process.env.REDIS_ENABLED, true),
 
   embedding: {
     url: process.env.EMBEDDING_URL || 'http://localhost:8081',
@@ -50,8 +57,25 @@ export const config = {
 
   limits: {
     maxUploadMb: num(process.env.MAX_UPLOAD_MB, 25),
+
+    // per session, a courtesy so one tab does not spam itself. the session id
+    // is client chosen, so these are ux and never the security boundary.
     chatPerMin: num(process.env.CHAT_RATE_LIMIT_PER_MIN, 20),
     uploadPerHour: num(process.env.UPLOAD_RATE_LIMIT_PER_HOUR, 10),
+
+    // per ip, the budget that actually holds
+    globalPerMin: num(process.env.GLOBAL_RATE_LIMIT_PER_MIN, 120),
+    chatPerIpPerMin: num(process.env.CHAT_RATE_LIMIT_PER_IP_PER_MIN, 10),
+    searchPerIpPerMin: num(process.env.SEARCH_RATE_LIMIT_PER_IP_PER_MIN, 20),
+    uploadPerIpPerHour: num(process.env.UPLOAD_RATE_LIMIT_PER_IP_PER_HOUR, 10),
+    downloadAllPerIpPerHour: num(process.env.DOWNLOAD_ALL_RATE_LIMIT_PER_IP_PER_HOUR, 3),
+
+    // a per minute counter cannot see 50 open sse streams, so count them too
+    concurrentChatPerIp: num(process.env.MAX_CONCURRENT_CHAT_PER_IP, 2),
+    concurrentChatTotal: num(process.env.MAX_CONCURRENT_CHAT_TOTAL, 12),
+
+    conversationsPerSession: num(process.env.MAX_CONVERSATIONS_PER_SESSION, 50),
+    documentsPerSession: num(process.env.MAX_DOCUMENTS_PER_SESSION, 20),
   },
 
   corpus: {
@@ -65,5 +89,7 @@ export const config = {
   cost: {
     per1mInput: num(process.env.COST_PER_1M_INPUT, 0.1),
     per1mOutput: num(process.env.COST_PER_1M_OUTPUT, 0.4),
+    // 0 disables the breaker
+    dailyCeilingUsd: num(process.env.DAILY_COST_CEILING_USD, 5),
   },
 }

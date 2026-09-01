@@ -18,6 +18,7 @@ import {
   since,
 } from '../core/metrics.js'
 import { logger } from '../core/logger.js'
+import { recordSpend } from '../core/spend.js'
 
 // The whole request as a stream of events. The route only has to turn these
 // into SSE frames, which keeps the pipeline testable without a server.
@@ -130,7 +131,9 @@ export async function* answerStream({
   generationDuration.observe(since(generationStart))
   llmTokens.inc({ direction: 'input', model }, usage.input_tokens || 0)
   llmTokens.inc({ direction: 'output', model }, usage.output_tokens || 0)
-  queryCost.inc({ model }, estimateCost(usage))
+  const cost = estimateCost(usage)
+  queryCost.inc({ model }, cost)
+  await recordSpend(cost)
 
   // the gate already kept invented markers off the wire; this second pass is
   // what tells us whether it had to, and builds the citation cards
@@ -156,7 +159,7 @@ export async function* answerStream({
       generation_ms: generationMs,
       total_ms: Date.now() - started,
     },
-    cost_usd: estimateCost(usage),
+    cost_usd: cost,
   }
 }
 

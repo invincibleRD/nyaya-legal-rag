@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { z } from 'zod'
 import { retrieve } from '../retrieval/hybrid.js'
+import { searchLimiter } from './limits.js'
 
 export const search = Router()
 
@@ -18,7 +19,8 @@ const body = z.object({
     .optional(),
 })
 
-search.post('/search', async (req, res, next) => {
+// embeddings plus a cross encoder rerank, so every call is gpu time
+search.post('/search', searchLimiter, async (req, res, next) => {
   const parsed = body.safeParse(req.body)
   if (!parsed.success) {
     return res.status(400).json({

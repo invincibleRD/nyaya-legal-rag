@@ -2,10 +2,11 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { Router } from 'express'
 import multer from 'multer'
-import rateLimit from 'express-rate-limit'
 import { config } from '../core/config.js'
 import { uploads } from '../core/metrics.js'
+import { uploadLimiter, uploadSessionLimiter } from './limits.js'
 import {
+  countDocuments,
   createDocument,
   deleteDocument,
   getDocument,
@@ -37,17 +38,7 @@ const upload = multer({
   },
 })
 
-const limiter = rateLimit({
-  windowMs: 60 * 60 * 1000,
-  limit: config.limits.uploadPerHour,
-  keyGenerator: (req) => req.sessionId,
-  standardHeaders: true,
-  legacyHeaders: false,
-  handler: (_req, res) =>
-    res.status(429).json({ error: 'rate_limited', message: 'too many uploads this hour' }),
-})
-
-documents.post('/documents/upload', limiter, (req, res) => {
+documents.post('/documents/upload', uploadLimiter, uploadSessionLimiter, (req, res) => {
   upload.single('file')(req, res, async (err) => {
     if (err) {
       uploads.inc({ outcome: 'rejected' })
@@ -64,6 +55,15 @@ documents.post('/documents/upload', limiter, (req, res) => {
       return res
         .status(415)
         .json({ error: 'unsupported_media_type', message: 'that file is not a pdf' })
+    }
+
+    if ((await countDocuments(req.sessionId)) >= config.limits.documentsPerSession) {
+      uploads.inc({ outcome: 'rejected' })
+      fs.rmSync(req.file.path, { force: true })
+      return res.status(429).json({
+        error: 'rate_limited',
+        message: 'this session already holds the maximum number of documents, delete one first',
+      })
     }
 
     const doc = await createDocument(req.sessionId, {

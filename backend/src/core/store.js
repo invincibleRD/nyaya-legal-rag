@@ -39,6 +39,10 @@ export async function listConversations(sessionId) {
   return convs.filter((c) => c.id)
 }
 
+export async function countConversations(sessionId) {
+  return redis().zcard(key.sessionConversations(sessionId))
+}
+
 export async function renameConversation(id, sessionId, title) {
   const conv = await getConversation(id, sessionId)
   if (!conv) return null
@@ -101,6 +105,10 @@ export async function listDocuments(sessionId) {
   const ids = await redis().smembers(key.sessionDocuments(sessionId))
   const docs = await Promise.all(ids.map((id) => redis().hgetall(key.document(id))))
   return docs.filter((d) => d.id).sort((a, b) => b.created_at.localeCompare(a.created_at))
+}
+
+export async function countDocuments(sessionId) {
+  return redis().scard(key.sessionDocuments(sessionId))
 }
 
 export async function deleteDocument(id, sessionId) {

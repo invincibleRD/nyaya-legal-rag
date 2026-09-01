@@ -15,6 +15,10 @@ vi.mock('../src/core/store.js', () => ({
     const conv = conversations.get(id)
     return conv && conv.session_id === sessionId ? conv : null
   }),
+  countConversations: vi.fn(
+    async (sessionId) =>
+      [...conversations.values()].filter((c) => c.session_id === sessionId).length
+  ),
   listConversations: vi.fn(async (sessionId) =>
     [...conversations.values()].filter((c) => c.session_id === sessionId)
   ),
@@ -40,6 +44,9 @@ vi.mock('../src/core/store.js', () => ({
     const doc = documents.find((d) => d.id === id)
     return doc && doc.session_id === sessionId ? doc : null
   }),
+  countDocuments: vi.fn(
+    async (sessionId) => documents.filter((d) => d.session_id === sessionId).length
+  ),
   createDocument: vi.fn(async (sessionId, doc) => {
     const record = { id: 'doc-1', session_id: sessionId, status: 'queued', progress: '0', ...doc }
     documents.push(record)
@@ -96,6 +103,13 @@ describe('health', () => {
     const res = await request(app).get('/api/v1/metrics')
     expect(res.status).toBe(200)
     expect(res.text).toContain('nyaya_http_requests_total')
+  })
+
+  it('serves the openapi spec', async () => {
+    const res = await request(app).get('/docs/openapi.json')
+    expect(res.status).toBe(200)
+    expect(res.body.openapi).toBe('3.0.3')
+    expect(Object.keys(res.body.paths)).toContain('/chat')
   })
 })
 

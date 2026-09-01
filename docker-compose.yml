@@ -91,6 +91,9 @@ services:
       context: ./backend
     restart: unless-stopped
     command: ["node", "src/workers/main.js"]
+    # runs the api image, so it inherits an http healthcheck it can never pass
+    healthcheck:
+      disable: true
     env_file: .env
     environment:
       QDRANT_URL: http://qdrant:6333
