@@ -240,7 +240,7 @@ and mint themselves a fresh bucket. In production here the chain is GCLB → ngi
 | Variable                                  | Default | What it does                                                         |
 | ----------------------------------------- | ------- | -------------------------------------------------------------------- |
 | `MAX_UPLOAD_MB`                           | `25`    |                                                                      |
-| `GLOBAL_RATE_LIMIT_PER_MIN`               | `120`   | per IP, across all of `/api/v1`                                      |
+| `GLOBAL_RATE_LIMIT_PER_MIN`               | `300`   | per IP, across all of `/api/v1`                                      |
 | `CHAT_RATE_LIMIT_PER_IP_PER_MIN`          | `10`    |                                                                      |
 | `SEARCH_RATE_LIMIT_PER_IP_PER_MIN`        | `20`    | GPU embed + cross-encoder on every call                              |
 | `UPLOAD_RATE_LIMIT_PER_IP_PER_HOUR`       | `10`    |                                                                      |

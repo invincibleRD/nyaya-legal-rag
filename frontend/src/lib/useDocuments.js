@@ -12,13 +12,18 @@ export function useDocuments() {
   const [error, setError] = useState(null)
   const timers = useRef(new Map())
 
+  // backs off so a few documents ingesting at once do not spend the whole
+  // per-ip budget on status polls
   const poll = useCallback((id) => {
+    let wait = 1200
     const tick = async () => {
       try {
         const s = await documentStatus(id)
         setDocuments((docs) => docs.map((d) => (d.document_id === id ? { ...d, ...s } : d)))
-        if (PENDING.includes(s.status)) timers.current.set(id, setTimeout(tick, 1200))
-        else timers.current.delete(id)
+        if (PENDING.includes(s.status)) {
+          timers.current.set(id, setTimeout(tick, wait))
+          wait = Math.min(wait * 1.4, 5000)
+        } else timers.current.delete(id)
       } catch {
         timers.current.delete(id)
       }

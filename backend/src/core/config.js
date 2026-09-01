@@ -64,7 +64,7 @@ export const config = {
     uploadPerHour: num(process.env.UPLOAD_RATE_LIMIT_PER_HOUR, 10),
 
     // per ip, the budget that actually holds
-    globalPerMin: num(process.env.GLOBAL_RATE_LIMIT_PER_MIN, 120),
+    globalPerMin: num(process.env.GLOBAL_RATE_LIMIT_PER_MIN, 300),
     chatPerIpPerMin: num(process.env.CHAT_RATE_LIMIT_PER_IP_PER_MIN, 10),
     searchPerIpPerMin: num(process.env.SEARCH_RATE_LIMIT_PER_IP_PER_MIN, 20),
     uploadPerIpPerHour: num(process.env.UPLOAD_RATE_LIMIT_PER_IP_PER_HOUR, 10),
