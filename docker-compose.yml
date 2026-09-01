@@ -34,7 +34,18 @@ services:
   embeddings:
     image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.7
     restart: unless-stopped
-    command: ["--model-id", "BAAI/bge-base-en-v1.5", "--port", "80"]
+    # client batch size defaults to 32, which 413s a bigger ingest batch, and
+    # auto-truncate turns an over-long passage into a result instead of a 422
+    command:
+      [
+        "--model-id",
+        "BAAI/bge-base-en-v1.5",
+        "--port",
+        "80",
+        "--max-client-batch-size",
+        "64",
+        "--auto-truncate",
+      ]
     ports:
       - "127.0.0.1:8081:80"
     volumes:
@@ -50,7 +61,18 @@ services:
   reranker:
     image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.7
     restart: unless-stopped
-    command: ["--model-id", "BAAI/bge-reranker-base", "--port", "80"]
+    # same 32 default silently 413s any rerank pool above it, and the caller
+    # falls back to the fused order — a quality loss with no error surfaced
+    command:
+      [
+        "--model-id",
+        "BAAI/bge-reranker-base",
+        "--port",
+        "80",
+        "--max-client-batch-size",
+        "64",
+        "--auto-truncate",
+      ]
     ports:
       - "127.0.0.1:8082:80"
     volumes:
