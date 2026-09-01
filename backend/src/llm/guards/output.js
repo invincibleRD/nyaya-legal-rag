@@ -174,16 +174,29 @@ export function buildCitations(referenced) {
   }))
 }
 
-export function shouldRefuse({ results, threshold = config.retrieval.confidenceThreshold }) {
+export function shouldRefuse({
+  results,
+  threshold = config.retrieval.confidenceThreshold,
+  documentThreshold = config.retrieval.documentConfidenceThreshold,
+}) {
   if (!Array.isArray(results) || results.length === 0) return true
   // cosine only. rrf ranks rather than measures, and a bm25 score is on a
   // different scale entirely, so neither can be compared against a threshold.
   // a hit the dense leg never returned counts as no similarity at all.
-  const scores = results
-    .filter(Boolean)
-    .map((r) => (Number.isFinite(r.dense_score) ? r.dense_score : 0))
-  if (!scores.length) return true
-  return Math.max(...scores) < threshold
+  const best = (rows) => {
+    const scores = rows.map((r) => (Number.isFinite(r.dense_score) ? r.dense_score : 0))
+    return scores.length ? Math.max(...scores) : -1
+  }
+  const rows = results.filter(Boolean)
+  // the statute threshold is tuned to stop the bot answering law it does not
+  // hold. a file the user uploaded and pointed at is in scope by their choice,
+  // and short documents phrased in ordinary words simply score lower, so it
+  // gets its own band. measured on an uploaded page: answerable 0.44-0.61,
+  // unanswerable 0.29-0.30 or no document hit at all.
+  return (
+    best(rows.filter((r) => r.source !== 'document')) < threshold &&
+    best(rows.filter((r) => r.source === 'document')) < documentThreshold
+  )
 }
 
 function tidy(text) {

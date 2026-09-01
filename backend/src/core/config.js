@@ -53,6 +53,7 @@ export const config = {
     candidatePool: num(process.env.CANDIDATE_POOL, 40),
     rrfK: num(process.env.RRF_K, 20),
     confidenceThreshold: num(process.env.CONFIDENCE_THRESHOLD, 0.58),
+    documentConfidenceThreshold: num(process.env.DOCUMENT_CONFIDENCE_THRESHOLD, 0.38),
   },
 
   limits: {

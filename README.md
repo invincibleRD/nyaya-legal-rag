@@ -218,12 +218,13 @@ be filled in, and even that is optional if you use Ollama.
 
 ### Retrieval
 
-| Variable               | Default | What it does                                                               |
-| ---------------------- | ------- | -------------------------------------------------------------------------- |
-| `RETRIEVAL_TOP_K`      | `8`     | passages handed to the model                                               |
-| `CANDIDATE_POOL`       | `40`    | per leg, before fusion                                                     |
-| `RRF_K`                | `20`    | 60 barely separates rank 1 from rank 10 on this corpus                     |
-| `CONFIDENCE_THRESHOLD` | `0.58`  | below this it refuses. In-scope measures 0.62–0.80, out-of-scope 0.37–0.53 |
+| Variable                        | Default | What it does                                                                                                                       |
+| ------------------------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `RETRIEVAL_TOP_K`               | `8`     | passages handed to the model                                                                                                       |
+| `CANDIDATE_POOL`                | `40`    | per leg, before fusion                                                                                                             |
+| `RRF_K`                         | `20`    | 60 barely separates rank 1 from rank 10 on this corpus                                                                             |
+| `CONFIDENCE_THRESHOLD`          | `0.58`  | below this it refuses. In-scope measures 0.62–0.80, out-of-scope 0.37–0.53                                                         |
+| `DOCUMENT_CONFIDENCE_THRESHOLD` | `0.38`  | the same gate for an uploaded file, which is in scope by the user's choice. Measured: answerable 0.44–0.61, unanswerable 0.29–0.30 |
 
 ### Abuse limits
 
