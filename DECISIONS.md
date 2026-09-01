@@ -210,13 +210,22 @@ in whole — and the pool is small on purpose, not on budget.
 
 It reranks on **the user's question**, not the HyDE passage: HyDE moves a query
 into passage space for a bi-encoder, and a cross-encoder does better without
-synthetic wording in the way. It is **skipped when the question names its
+synthetic wording in the way. But the question goes through the same synonym
+bridge the sparse leg gets (§10), and getting that wrong cost real accuracy for a
+while: `expandQuery` was applied only to BM25, so the retriever searched for the
+statutory words while the cross-encoder re-read the user's colloquial ones and
+undid the work. Measured straight against the reranker, "grounds for anticipatory
+bail" scores the correct passage — s.482(1), "person apprehending arrest" — at
+**0.0031**, losing to a near miss at 0.0068; through the bridge the same passage
+scores **0.9805**. The phrase never appears in the BNSS, which is the point of the
+bridge. Routing the reranker query through it moved s.482(1) from rank 5 to rank
+1 and MRR@10 from 0.716 to 0.765. It is **skipped when the question names its
 section**, because a direct lookup is already exact. And if it is slow or down
 the fused order is returned and the request still succeeds — a quality component
 must not become an availability dependency.
 
 On the final golden set the reranker does not change what is found (Recall@10
-stays 0.96), it changes the order (MRR@10 0.672 to 0.716). That is the honest
+stays 0.96), it changes the order (MRR@10 0.672 to 0.765). That is the honest
 description of its job: find with BM25, order with the cross-encoder. It costs
 about 1.5 s on CPU and 4–6 ms on the L4, which is what `docker-compose.gpu.yml`
 exists for.
@@ -379,7 +388,7 @@ than take an order from a PDF, but it is a cost.
   BM25 stats missing: dense-only with a warning. Corrupt SSE frame: keep the
   answer already half generated.
 - **The CI gate is a floor under the measured number, not the number itself** —
-  Recall@10 ≥ 0.88 against a measured 0.96, MRR ≥ 0.60 against 0.716 — so it
+  Recall@10 ≥ 0.88 against a measured 0.96, MRR ≥ 0.60 against 0.765 — so it
   fails when retrieval gets worse, not when a hard question stays hard. Coverage
   was fixed the same way round: a synthetic fixture PDF so corpus tests stop
   self-skipping (CI 35% against a 60% floor, now 63%), rather than lowering the
@@ -451,7 +460,7 @@ configuration measured 0.917 and 0.958 on two runs of an earlier golden set, so
 my reading is run-to-run variance rather than a real effect. But that is a
 reading, not a measurement, and the honest position is that this set is too small
 to tell the difference. The reranker ships on the retrieval evidence (MRR@10
-0.716, best of the three) and the answer-side number is reported as measured
+0.765, best of the three) and the answer-side number is reported as measured
 rather than quietly dropped.
 
 **The synonym bridge is fitted to its own test.** Four entries were added after

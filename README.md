@@ -394,7 +394,7 @@ set scored 0.958 Recall@5 on the dense-only baseline, which measured nothing.
 | --------------------------------- | -------- | --------- | --------- | --------- | -------- |
 | dense-only                        | 0.80     | 0.84      | 0.586     | 41 ms     | 10 ms    |
 | hybrid (dense + BM25, RRF)        | **0.84** | **0.96**  | 0.672     | 41 ms     | 13 ms    |
-| **hybrid + cross-encoder rerank** | **0.84** | **0.96**  | **0.716** | 1609 ms   | 23 ms    |
+| **hybrid + cross-encoder rerank** | **0.84** | **0.96**  | **0.765** | 1609 ms   | 24 ms    |
 
 ### Answers
 
@@ -407,8 +407,19 @@ set scored 0.958 Recall@5 on the dense-only baseline, which measured nothing.
 **Why the winner won.** BM25 is what _finds_ the section: Recall@10 goes 0.84 to
 0.96, because statute questions turn on exact identifiers and colloquial terms
 that a cosine over 768 dimensions blurs. RRF then _ranks_ it, and the
-cross-encoder reorders the top 6 in full: MRR 0.672 to 0.716, the best of the
+cross-encoder reorders the top 6 in full: MRR 0.672 to 0.765, the best of the
 three. Find with BM25, order with the cross-encoder.
+
+**The cross-encoder needs the synonym bridge too.** It first measured 0.716, and
+the gap was that `expandQuery` ran on the sparse leg only — BM25 searched for the
+statutory words while the cross-encoder was still re-reading the user's
+colloquial ones. Measured straight against the reranker: "grounds for
+anticipatory bail" scored the correct passage (s.482(1), "person apprehending
+arrest") at **0.0031** and lost to a near miss at 0.0068; through the bridge that
+same passage scores **0.9805**. The phrase "anticipatory bail" appears nowhere in
+the BNSS, which is the whole reason the bridge exists. Routing the reranker query
+through it moved s.482(1) from rank 5 to rank 1, and MRR@10 from 0.716 to 0.765
+with recall unchanged.
 
 **The citation number that got worse.** Reranking scores 0.76 against 0.84 for
 the other two. On 25 questions that is two answers, and each config's answer pass
