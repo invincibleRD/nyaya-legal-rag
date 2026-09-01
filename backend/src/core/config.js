@@ -35,7 +35,7 @@ export const config = {
   rerank: {
     enabled: bool(process.env.RERANK_ENABLED, false),
     url: process.env.RERANKER_URL || 'http://localhost:8082',
-    poolSize: num(process.env.RERANK_POOL, 6),
+    poolSize: num(process.env.RERANK_POOL, 12),
     maxChars: num(process.env.RERANK_MAX_CHARS, 1800),
   },
 
