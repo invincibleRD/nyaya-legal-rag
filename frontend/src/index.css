@@ -1,0 +1,157 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    color-scheme: light;
+  }
+  html.dark {
+    color-scheme: dark;
+  }
+  body {
+    @apply bg-ink-50 text-ink-900 antialiased dark:bg-ink-900 dark:text-ink-100;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+  :focus-visible {
+    @apply outline-none ring-2 ring-brass-500 ring-offset-2 ring-offset-ink-50 dark:ring-offset-ink-900;
+  }
+
+  /* thin, self-effacing scrollbars — the chat column should read as paper */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: theme(colors.ink.300) transparent;
+  }
+  .dark * {
+    scrollbar-color: theme(colors.ink.700) transparent;
+  }
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply rounded-full border-[3px] border-solid border-transparent bg-ink-300 bg-clip-content dark:bg-ink-700;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg border border-ink-200 bg-white px-3 py-1.5
+      text-sm font-medium text-ink-800 transition-all duration-150 hover:border-ink-300 hover:bg-ink-100
+      active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40 disabled:active:scale-100
+      dark:border-ink-700 dark:bg-ink-800 dark:text-ink-100 dark:hover:border-ink-600 dark:hover:bg-ink-750;
+  }
+  .btn-primary {
+    @apply border-brass-600 bg-brass-500 text-white hover:border-brass-700 hover:bg-brass-600
+      dark:border-brass-600 dark:bg-brass-500 dark:text-white dark:hover:bg-brass-600;
+  }
+  /* ghost: no chrome until you touch it. the default for anything repeated */
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg border border-transparent bg-transparent
+      px-2.5 py-1.5 text-sm font-medium text-ink-600 transition-all duration-150 hover:bg-ink-100
+      hover:text-ink-900 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40
+      dark:text-ink-400 dark:hover:bg-ink-750 dark:hover:text-ink-100;
+  }
+  .btn-icon {
+    @apply grid h-8 w-8 shrink-0 place-items-center rounded-lg text-ink-600 transition-all duration-150
+      hover:bg-ink-100 hover:text-ink-900 active:scale-95 dark:text-ink-400 dark:hover:bg-ink-750
+      dark:hover:text-ink-100;
+  }
+  .field {
+    @apply w-full rounded-lg border border-ink-200 bg-white px-3 py-2 text-sm transition-colors
+      placeholder:text-ink-400 focus:border-brass-400 dark:border-ink-700 dark:bg-ink-800
+      dark:placeholder:text-ink-500;
+  }
+  .card {
+    @apply rounded-xl border border-ink-200 bg-white transition-all duration-150 dark:border-ink-700
+      dark:bg-ink-800;
+  }
+  .skeleton {
+    @apply rounded-md bg-ink-200/80 dark:bg-ink-750;
+    background-image: linear-gradient(
+      90deg,
+      transparent 0%,
+      theme(colors.ink.100 / 90%) 50%,
+      transparent 100%
+    );
+    background-size: 200% 100%;
+    @apply animate-shimmer;
+  }
+  .dark .skeleton {
+    background-image: linear-gradient(
+      90deg,
+      transparent 0%,
+      theme(colors.ink.700 / 90%) 50%,
+      transparent 100%
+    );
+  }
+  .rule {
+    @apply px-2 text-[11px] font-semibold uppercase tracking-wider text-ink-500 dark:text-ink-500;
+  }
+}
+
+.prose-answer {
+  @apply text-[15px] leading-[1.75];
+}
+.prose-answer p {
+  @apply mb-4 last:mb-0;
+}
+.prose-answer ul {
+  @apply mb-4 list-disc space-y-2 pl-5 marker:text-ink-400;
+}
+.prose-answer ol {
+  @apply mb-4 list-decimal space-y-2 pl-5 marker:text-ink-400;
+}
+.prose-answer li {
+  @apply leading-[1.65] pl-0.5;
+}
+.prose-answer h1,
+.prose-answer h2,
+.prose-answer h3 {
+  @apply mb-2 mt-6 font-serif text-base font-semibold first:mt-0;
+}
+.prose-answer strong {
+  @apply font-semibold text-ink-900 dark:text-ink-50;
+}
+.prose-answer blockquote {
+  @apply mb-4 border-l-2 border-brass-400 pl-4 font-serif italic text-ink-600 dark:text-ink-400;
+}
+.prose-answer code {
+  @apply rounded border border-ink-200 bg-ink-100 px-1 py-0.5 font-mono text-[13px]
+    dark:border-ink-700 dark:bg-ink-850;
+}
+.prose-answer pre {
+  @apply mb-4 overflow-x-auto rounded-xl border border-ink-200 bg-ink-100 p-4 text-[13px]
+    dark:border-ink-700 dark:bg-ink-850;
+}
+.prose-answer pre code {
+  @apply border-0 bg-transparent p-0;
+}
+.prose-answer a {
+  @apply text-brass-600 underline decoration-brass-400/40 underline-offset-2 hover:decoration-brass-400
+    dark:text-brass-400;
+}
+.prose-answer table {
+  @apply mb-4 w-full text-left text-sm;
+}
+.prose-answer th {
+  @apply border-b border-ink-200 pb-1.5 pr-3 text-[11px] font-semibold uppercase tracking-wide
+    text-ink-500 dark:border-ink-700;
+}
+.prose-answer td {
+  @apply border-b border-ink-200/70 py-2 pr-3 align-top dark:border-ink-700/70;
+}
+.prose-answer hr {
+  @apply my-6 border-ink-200 dark:border-ink-700;
+}

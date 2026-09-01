@@ -34,10 +34,12 @@ function joinLines(lines) {
 }
 
 function pagesFor(offsets, start, end) {
-  const pages = offsets.filter((o) => o.end >= start).filter((o, i, arr) => {
-    const prevEnd = i === 0 ? 0 : arr[i - 1].end
-    return prevEnd <= end
-  })
+  const pages = offsets
+    .filter((o) => o.end >= start)
+    .filter((o, i, arr) => {
+      const prevEnd = i === 0 ? 0 : arr[i - 1].end
+      return prevEnd <= end
+    })
   const list = pages.length ? pages.map((o) => o.page) : offsets.map((o) => o.page)
   return { start: Math.min(...list), end: Math.max(...list) }
 }
@@ -243,7 +245,10 @@ function splitOversized(block) {
 
 export function chunkSection(section, meta) {
   const { text, offsets } = joinLines(section.lines)
-  const heading = `${ACT_SHORT} Section ${section.number}${section.title ? ' - ' + section.title : ''}`
+  // the chapter title says what the section is about in words the section itself
+  // may never use, "processes to compel appearance" over a form of summons
+  const chapter = section.chapterTitle ? `${section.chapterTitle}\n` : ''
+  const heading = `${chapter}${ACT_SHORT} Section ${section.number}${section.title ? ' - ' + section.title : ''}`
 
   let parts
   if (text.length <= MAX_CHARS) {
@@ -288,8 +293,6 @@ export async function buildStatuteChunks(pdfPath, meta) {
   const { pages } = await extractRange(pdfPath, SECTION_PAGES.from, SECTION_PAGES.to)
   const sections = collectSections(pages)
   const ingestedAt = new Date().toISOString()
-  const chunks = sections.flatMap((s) =>
-    chunkSection(s, { sourceUri: meta.sourceUri, ingestedAt })
-  )
+  const chunks = sections.flatMap((s) => chunkSection(s, { sourceUri: meta.sourceUri, ingestedAt }))
   return { sections, chunks }
 }

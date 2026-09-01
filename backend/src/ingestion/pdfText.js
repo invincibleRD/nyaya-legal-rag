@@ -63,9 +63,7 @@ export async function extractPage(doc, pageNumber) {
   }
 
   // page number sits alone under the header
-  const bodyLines = toLines(body).filter(
-    (l) => !(l.y > HEADER_Y - 15 && /^\d{1,3}$/.test(l.text))
-  )
+  const bodyLines = toLines(body).filter((l) => !(l.y > HEADER_Y - 15 && /^\d{1,3}$/.test(l.text)))
 
   return { pageNumber, bodyLines, marginBlocks: groupMargin(toLines(margin)) }
 }
@@ -84,6 +82,22 @@ function groupMargin(lines) {
     }
   }
   return blocks.map((b) => ({ topY: b.topY, text: b.parts.join(' ').replace(/\s+/g, ' ').trim() }))
+}
+
+// the schedule tables need the runs as they are, the body/margin split only
+// makes sense for the sections
+export async function extractRuns(doc, pageNumber) {
+  const page = await doc.getPage(pageNumber)
+  const content = await page.getTextContent()
+  return content.items
+    .filter((i) => i.str.trim())
+    .map((i) => ({
+      x: i.transform[4],
+      y: i.transform[5],
+      width: i.width,
+      height: i.height,
+      str: i.str,
+    }))
 }
 
 export async function extractRange(pdfPath, from, to) {

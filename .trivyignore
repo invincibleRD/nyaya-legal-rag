@@ -1,0 +1,9 @@
+# Base image findings we cannot fix from here. Everything else still fails the
+# build — this file is for things with no action available to us, not for
+# silencing the scanner. Revisit when node:22-slim ships a newer npm.
+
+# node-tar bundled inside npm itself, in /usr/local/lib/node_modules/npm.
+# It is not in our dependency tree (npm ls tar is empty), npm is never invoked
+# at runtime, and the image runs as a non-root user. Fixed in tar 7.5.19, which
+# will arrive with a base image bump.
+CVE-2026-59873
