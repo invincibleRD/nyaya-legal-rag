@@ -251,6 +251,26 @@ conservative: a document found only by BM25 cannot by itself unlock an answer.
 On the golden set this holds — 6/6 out-of-scope questions refused in all three
 configurations, and zero in-scope refusals across the 25 answerable ones.
 
+### Uploaded documents get their own band
+
+0.58 was measured on statute retrieval, and applying it to a file the user
+uploaded was wrong twice over: the number was fitted to a different corpus, and
+the risk it guards against does not exist there. The gate is meant to stop the
+bot answering law it does not hold. A document the user chose and pointed at is
+in scope by their own decision, and a short file written in ordinary words simply
+scores lower than gazette prose.
+
+It showed up as a live bug: "where did he work in the past?" against an uploaded
+page retrieved the right chunk at 0.52 and was refused for low confidence.
+Measured on that page — answerable questions 0.44 to 0.61, unanswerable ones 0.29
+to 0.30 or no document hit at all — so documents get `0.38`, in the gap, and the
+statute keeps 0.58. Refusal is now per source: it takes both bands failing. An
+off-topic question with a document in scope is still refused, which is the
+behaviour that matters.
+
+Four questions either side is a small sample and the number should be re-measured
+against a real set of uploads.
+
 ## 9. Citations are enforced in code, not in the prompt
 
 The prompt does ask for citations. That is not an enforcement mechanism. A prompt
