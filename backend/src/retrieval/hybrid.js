@@ -184,10 +184,13 @@ export async function retrieve({
   const [statuteRows, documentRows = []] = await Promise.all(tasks)
 
   const fused = [...statuteRows, ...documentRows].sort((a, b) => b.score - a.score)
-  // rerank on what the user actually asked, not the hyde passage. a question that
-  // names its section is already answered by the lookup below, so it skips the
-  // cross encoder and the second it costs.
-  let ranked = intent ? fused : await rerank(query, fused)
+  // rerank on what the user actually asked, not the hyde passage — but through
+  // the same synonym bridge the sparse leg gets. the cross encoder scores
+  // "anticipatory bail" against s.482 at 0.003 and against a near miss at 0.007;
+  // through the bridge it is 0.98 against 0.007. a question that names its
+  // section is already answered by the lookup below, so it skips the cross
+  // encoder and the second it costs.
+  let ranked = intent ? fused : await rerank(expandQuery(query), fused)
 
   if (intent) {
     const exact = await directLookup(statuteCollection, intent)
