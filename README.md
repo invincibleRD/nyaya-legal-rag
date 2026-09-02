@@ -3,7 +3,15 @@
 Two panels. A chat that answers questions on the bare act and cites Act + Section
 for every claim, and a forms library extracted straight out of the source PDF.
 
-**Live:** https://hrn.ultronai.me · **API docs:** https://hrn.ultronai.me/docs
+**Live app:** https://hrn.ultronai.me — full stack on a GCP VM with an NVIDIA L4
+(frontend, API, Qdrant, Redis and both inference containers behind one load
+balancer).
+
+**Also on Vercel:** https://nyaya-legal-rag-ten.vercel.app — the same frontend,
+built from `main`, calling the API above. Both origins are on the API's CORS
+allowlist.
+
+**API docs:** https://hrn.ultronai.me/docs
 
 > **The supplied PDF is not the BNS.** It is the **Bharatiya Nagarik Suraksha
 > Sanhita (BNSS), 2023 — Act 46 of 2023**, the criminal _procedure_ code. Their

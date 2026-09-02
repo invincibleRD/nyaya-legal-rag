@@ -220,3 +220,26 @@ jobs:
 
       - name: record good image
         run: echo "${{ env.IMAGE }}:${{ github.sha }}" > ~/nyaya-current-image
+
+  # The vercel production alias follows whatever branch the dashboard calls
+  # production, which is not visible from the repo. Promoting explicitly here
+  # makes main the production url regardless of that setting.
+  vercel:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [lint, test, frontend]
+    runs-on: ubuntu-latest
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - name: promote main to the vercel production url
+        run: |
+          if [ -z "$VERCEL_TOKEN" ] || [ -z "$VERCEL_PROJECT_ID" ]; then
+            echo "vercel secrets are not set, skipping."
+            echo "add VERCEL_TOKEN, VERCEL_ORG_ID and VERCEL_PROJECT_ID to make"
+            echo "every main merge publish to the production url."
+            exit 0
+          fi
+          npx --yes vercel@latest deploy --prod --yes --token="$VERCEL_TOKEN"
