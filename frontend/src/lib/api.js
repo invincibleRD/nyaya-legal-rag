@@ -1,4 +1,4 @@
-const BASE = 'https://hrn.ultronai.me'
+const BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 const ROOT = `${BASE}/api/v1`
 
 function sessionId() {
