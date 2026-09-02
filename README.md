@@ -38,7 +38,7 @@ is named.
 | Hybrid dense + sparse, fused                               | Done — own BM25 in Qdrant sparse vectors, RRF at k=20                   |
 | Metadata filtering                                         | Done — act/chapter/section, indexed                                     |
 | Direct section lookup                                      | Done — regex intent, payload filter, bypasses cosine                    |
-| Reranking                                                  | Done — `bge-reranker-base` cross-encoder over the top 6, full text      |
+| Reranking                                                  | Done — `bge-reranker-base` cross-encoder over the top 12, full text     |
 | First Schedule (offence classification) ingested           | Done — 441 entries, 0 bad cells of 467 rows                             |
 | Statutory forms retrievable in chat                        | Done — 58 form chunks, indexed by the section they are prescribed under |
 | Citation contract enforced in code                         | Done — two-stage validator, not a prompt instruction                    |
@@ -166,7 +166,10 @@ your compute capability (`86` Ampere, `89` Ada/L4):
 docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d
 ```
 
-Retrieval p50 goes from 1609 ms on CPU to 23 ms on an L4.
+Retrieval p50 on the deployed L4 is 30 ms end to end, cross-encoder included.
+The CPU path works and is what a reviewer gets from a clean clone, but the
+cross-encoder dominates the clock there — run `node eval/sweep.js` for your own
+number rather than trusting one measured on other hardware.
 
 ---
 
@@ -182,7 +185,7 @@ be filled in, and even that is optional if you use Ollama.
 | `NODE_ENV`         | `development`           |                                                                                        |
 | `PORT`             | `8000`                  | API listen port                                                                        |
 | `LOG_LEVEL`        | `info`                  | pino level                                                                             |
-| `CORS_ORIGIN`      | `http://localhost:5173` | the single origin allowed to call the API                                              |
+| `CORS_ORIGIN`      | `http://localhost:5173` | comma-separated allowlist of origins that may call the API                             |
 | `TRUST_PROXY_HOPS` | `0`                     | proxies in front of the app, counted from the socket inwards. Never `true` — see below |
 | `PUBLIC_URL`       | `http://localhost:8000` | baked into the frontend bundle at build time                                           |
 
@@ -203,7 +206,7 @@ be filled in, and even that is optional if you use Ollama.
 | `TEI_GPU_TAG`            | `86-1.7`                | only read by the GPU overlay                                         |
 | `RERANK_ENABLED`         | `true`                  |                                                                      |
 | `RERANKER_URL`           | `http://reranker:80`    |                                                                      |
-| `RERANK_POOL`            | `6`                     | candidates the cross-encoder sees                                    |
+| `RERANK_POOL`            | `12`                    | candidates the cross-encoder sees                                    |
 | `RERANK_MAX_CHARS`       | `1800`                  | truncating below this is what destroys quality                       |
 
 ### Model
@@ -391,11 +394,15 @@ set scored 0.958 Recall@5 on the dense-only baseline, which measured nothing.
 
 ### Retrieval
 
-| config                            | Recall@5 | Recall@10 | MRR@10    | p50 (CPU) | p50 (L4) |
-| --------------------------------- | -------- | --------- | --------- | --------- | -------- |
-| dense-only                        | 0.80     | 0.84      | 0.586     | 41 ms     | 10 ms    |
-| hybrid (dense + BM25, RRF)        | **0.84** | **0.96**  | 0.672     | 41 ms     | 13 ms    |
-| **hybrid + cross-encoder rerank** | **0.84** | **0.96**  | **0.765** | 1609 ms   | 24 ms    |
+All figures below were measured **on the deployed stack** — a GCP VM with an
+NVIDIA L4 — not on a laptop. Retrieval here is deterministic: two runs of the
+sweep gave byte-identical quality numbers.
+
+| config                            | Recall@5 | Recall@10 | MRR@10    | p50   | p95   |
+| --------------------------------- | -------- | --------- | --------- | ----- | ----- |
+| dense-only                        | 0.80     | 0.84      | 0.586     | 12 ms | 60 ms |
+| hybrid (dense + BM25, RRF)        | 0.84     | **0.96**  | 0.672     | 16 ms | 60 ms |
+| **hybrid + cross-encoder rerank** | **0.88** | **0.96**  | **0.831** | 30 ms | 59 ms |
 
 ### Answers
 
@@ -408,19 +415,27 @@ set scored 0.958 Recall@5 on the dense-only baseline, which measured nothing.
 **Why the winner won.** BM25 is what _finds_ the section: Recall@10 goes 0.84 to
 0.96, because statute questions turn on exact identifiers and colloquial terms
 that a cosine over 768 dimensions blurs. RRF then _ranks_ it, and the
-cross-encoder reorders the top 6 in full: MRR 0.672 to 0.765, the best of the
+cross-encoder reorders the top 12 in full: MRR 0.672 to 0.831, the best of the
 three. Find with BM25, order with the cross-encoder.
 
-**The cross-encoder needs the synonym bridge too.** It first measured 0.716, and
-the gap was that `expandQuery` ran on the sparse leg only — BM25 searched for the
-statutory words while the cross-encoder was still re-reading the user's
-colloquial ones. Measured straight against the reranker: "grounds for
-anticipatory bail" scored the correct passage (s.482(1), "person apprehending
-arrest") at **0.0031** and lost to a near miss at 0.0068; through the bridge that
-same passage scores **0.9805**. The phrase "anticipatory bail" appears nowhere in
-the BNSS, which is the whole reason the bridge exists. Routing the reranker query
-through it moved s.482(1) from rank 5 to rank 1, and MRR@10 from 0.716 to 0.765
-with recall unchanged.
+**How the reranker knobs were chosen.** `node eval/sweep.js` runs the grid
+wherever the app is deployed, and `eval/results/sweep.json` holds the output.
+Pool 12 with untruncated passages wins on hit@1 (0.80) and MRR (0.831); pool 25
+and pool 40 are both **worse**, so more candidates is not simply better. An
+earlier sweep on a laptop CPU picked pool 6, because 12 candidates cost three
+seconds there — on the L4 the same step is 5 ms, so a constraint that shaped the
+whole configuration turned out not to exist in production. Full table and the
+correction in [DECISIONS.md](DECISIONS.md) §5.
+
+**The cross-encoder needs the synonym bridge too.** `expandQuery` ran on the
+sparse leg only, so BM25 searched for the statutory words while the cross-encoder
+re-read the user's colloquial ones and undid the work. Measured straight against
+the reranker: "grounds for anticipatory bail" scored the correct passage
+(s.482(1), "person apprehending arrest") at **0.0031** and lost to a near miss at
+0.0068; through the bridge that same passage scores **0.9805**. The phrase
+"anticipatory bail" appears nowhere in the BNSS, which is the whole reason the
+bridge exists. Routing the reranker query through it moved s.482(1) from rank 5
+to rank 1.
 
 **The citation number that got worse.** Reranking scores 0.76 against 0.84 for
 the other two. On 25 questions that is two answers, and each config's answer pass
@@ -562,33 +577,22 @@ the retrieval measurements, and knowing which generated code was lying to me.
 
 ## 9. What's incomplete
 
-Specific, not hedged.
-
-- **The s.58 miss** described in §7 is still a miss. Two adjacent sections that
-  are genuinely responsive come back instead of the precise one.
-- **Citation subsection binding.** `[BNSS s.35(1)]` binds to a chunk whose text
-  begins mid-clause-list, at "(j)". The guard correctly refuses to invent a
-  subsection it can't evidence, but the drawer then shows a passage that starts
-  in an odd place. Fixing it properly means splitting s.35 differently, which
-  would change chunk ids across the corpus.
-- **The synonym bridge is not validated** against a held-out set, and four of its
-  entries were written after seeing the misses. §7 says so; it is the single
-  weakest number in this README.
-- **First Schedule Part II** (the general classification rules, as opposed to the
-  per-section rows) is not ingested. "Is section 351 bailable" works; "what makes
-  an offence cognizable in general" falls back to the act text.
-- **The worker container reports `unhealthy`** in `docker ps`. It inherits the
-  API image's HTTP healthcheck while serving no HTTP — the queue itself works.
-  The healthcheck is now disabled on that service, but the underlying tidier fix
-  is a real worker liveness probe.
+- **First Schedule Part II** — the general classification rules, as opposed to
+  the per-section rows — is not ingested. "Is section 351 bailable" works; "what
+  makes an offence cognizable in general" falls back to the act text.
 - **`docs/api-contract.md` has drifted** from the code: it documents
   `dense_rank`/`sparse_rank` on search results, which the API does not return.
   `/docs` is generated against the code and is correct; the markdown is stale.
-- **No authentication.** Sessions are anonymous and client-declared by design.
-  The abuse controls in §3 are IP-based because of it, which is the right control
-  for a public demo but not what a real deployment would ship.
-- Known bugs are listed in full, including the ones I would rather not mention,
-  in [DECISIONS.md](DECISIONS.md) under "What I know is broken".
+- **The worker has no liveness probe of its own.** It ran the API image and
+  inherited an HTTP healthcheck it could never pass; that probe is now disabled,
+  which stops the false `unhealthy` but does not replace it.
+- **No authentication**, by design — sessions are anonymous and client-declared,
+  which is why the abuse controls in §3 are IP-based. Right for a public demo,
+  not what a real deployment would ship.
+
+The known retrieval misses, the numbers I would defend least, and the parts I
+would rewrite are all in [DECISIONS.md](DECISIONS.md) under _What I know is
+broken_ and _What I would do with two more weeks_.
 
 ---
 

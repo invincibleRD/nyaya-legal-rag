@@ -1,9 +1,28 @@
 # overlay for an nvidia box: docker compose -f docker-compose.yml -f docker-compose.gpu.yml up
 # image tag matches compute capability: 86 ampere (rtx 30xx), 89 ada (L4, rtx 40xx),
 # 75 turing. set TEI_GPU_TAG in .env to match the card.
+#
+# command is repeated in full because compose replaces it rather than appending.
+# fp16 halves the weights and roughly doubles throughput on these two models, and
+# the larger token budget lets a whole ingest batch go in one forward pass — on a
+# 23GB L4 the models are using under 2GB, so the headroom is free.
 services:
   embeddings:
     image: ghcr.io/huggingface/text-embeddings-inference:${TEI_GPU_TAG:-86-1.7}
+    command:
+      [
+        "--model-id",
+        "BAAI/bge-base-en-v1.5",
+        "--port",
+        "80",
+        "--max-client-batch-size",
+        "64",
+        "--max-batch-tokens",
+        "65536",
+        "--dtype",
+        "float16",
+        "--auto-truncate",
+      ]
     deploy:
       resources:
         reservations:
@@ -14,6 +33,20 @@ services:
 
   reranker:
     image: ghcr.io/huggingface/text-embeddings-inference:${TEI_GPU_TAG:-86-1.7}
+    command:
+      [
+        "--model-id",
+        "BAAI/bge-reranker-base",
+        "--port",
+        "80",
+        "--max-client-batch-size",
+        "64",
+        "--max-batch-tokens",
+        "65536",
+        "--dtype",
+        "float16",
+        "--auto-truncate",
+      ]
     deploy:
       resources:
         reservations:

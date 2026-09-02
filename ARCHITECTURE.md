@@ -22,7 +22,7 @@ flowchart TD
         D[dense<br/>bge-base-en-v1.5] --> F[RRF fuse<br/>k=20]
         S[sparse BM25<br/>+ synonym bridge] --> F
         L[direct lookup<br/>exact section] --> F
-        F --> RR[cross-encoder rerank<br/>bge-reranker-base, top 6]
+        F --> RR[cross-encoder rerank<br/>bge-reranker-base, top 12]
         RR --> DV[diversify<br/>max 2 chunks per section]
     end
 

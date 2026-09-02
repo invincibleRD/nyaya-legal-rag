@@ -5,7 +5,12 @@ export const config = {
   env: process.env.NODE_ENV || 'development',
   port: num(process.env.PORT, 8000),
   logLevel: process.env.LOG_LEVEL || 'info',
-  corsOrigin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+  // comma separated: the app is served from more than one origin (the vm behind
+  // the load balancer, and a vercel deployment of the same frontend)
+  corsOrigins: (process.env.CORS_ORIGIN || 'http://localhost:5173')
+    .split(',')
+    .map((o) => o.trim().replace(/\/$/, ''))
+    .filter(Boolean),
 
   // number of proxies in front of us, counted from the socket inwards. never
   // `true`: that would let any client forge its own source ip through
@@ -35,7 +40,7 @@ export const config = {
   rerank: {
     enabled: bool(process.env.RERANK_ENABLED, false),
     url: process.env.RERANKER_URL || 'http://localhost:8082',
-    poolSize: num(process.env.RERANK_POOL, 6),
+    poolSize: num(process.env.RERANK_POOL, 12),
     maxChars: num(process.env.RERANK_MAX_CHARS, 1800),
   },
 

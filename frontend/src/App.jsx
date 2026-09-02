@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
+import { Analytics } from '@vercel/analytics/react'
+import { SpeedInsights } from '@vercel/speed-insights/react'
 import Sidebar from './components/Sidebar.jsx'
 import TopBar from './components/TopBar.jsx'
 import ChatPanel from './panels/ChatPanel.jsx'
@@ -81,6 +83,10 @@ export default function App() {
           <FormsPanel />
         )}
       </div>
+
+      {/* no-ops unless the app is served from vercel */}
+      <Analytics />
+      <SpeedInsights />
     </div>
   )
 }
