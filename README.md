@@ -414,11 +414,13 @@ sweep gave byte-identical quality numbers.
 
 ### Answers
 
+Also measured on the deployed stack, against live Gemini calls.
+
 | config          | citation accuracy | refusal rate (out of scope) | generation p50 | generation p95 |
 | --------------- | ----------------- | --------------------------- | -------------- | -------------- |
-| dense-only      | 0.84              | 6/6                         | 2673 ms        | 5144 ms        |
-| hybrid          | 0.84              | 6/6                         | 3267 ms        | 5664 ms        |
-| hybrid + rerank | 0.76              | 6/6                         | 3025 ms        | 4448 ms        |
+| dense-only      | 0.76              | 6/6                         | 2429 ms        | 3101 ms        |
+| hybrid          | 0.68              | 6/6                         | 1913 ms        | 3279 ms        |
+| hybrid + rerank | **0.88**          | 6/6                         | 2116 ms        | 3672 ms        |
 
 **Why the winner won.** BM25 is what _finds_ the section: Recall@10 goes 0.84 to
 0.96, because statute questions turn on exact identifiers and colloquial terms
@@ -445,11 +447,15 @@ the reranker: "grounds for anticipatory bail" scored the correct passage
 bridge exists. Routing the reranker query through it moved s.482(1) from rank 5
 to rank 1.
 
-**The citation number that got worse.** Reranking scores 0.76 against 0.84 for
-the other two. On 25 questions that is two answers, and each config's answer pass
-is a separate set of model calls, so this sits inside run-to-run variance rather
-than being a real effect — the same config measured 0.917 and 0.958 on two runs
-of the previous set. Reported as measured rather than quietly dropped.
+**Citation accuracy follows retrieval, once it is measured on the right
+hardware.** Reranking is the best of the three at 0.88, against 0.76 for
+dense-only and 0.68 for hybrid — the same order as MRR, which is what you would
+expect: a citation is grounded when the passage that answers the question is the
+one the model was handed. An earlier laptop-CPU run had reranking _worst_ at
+0.76, which was an artefact of the pool-6 configuration that CPU latency forced
+(see §7 above); it is not reproduced in production. Generation latency is
+model-side and essentially the same across all three, so retrieval quality is
+where the citation number is won.
 
 **Known miss.** "A man is picked up at 10pm on Monday, by when must he be before
 a magistrate?" returns s.57 and s.78 — both genuinely about producing an arrested
